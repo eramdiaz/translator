@@ -36,7 +36,7 @@ class Embedding(torch.nn.Module):
         return self.scale_factor * self.embedder(x)
 
 
-class AddPE(torch.nn.Module):
+class PositionalEncoding(torch.nn.Module):
     def __init__(self, seq_len, emb_dim):
         super().__init__()
         self.seq_len = seq_len

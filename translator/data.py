@@ -1,9 +1,9 @@
 """Data utilities for the transformer"""
 
-import sentencepiece
-from translator.blocks import Padding
 from torch.utils.data import Dataset
 from torch import LongTensor
+from translator.blocks import Padding
+from translator.tokenizer import tokenizer
 
 
 class ItemGetter(Dataset):
@@ -11,10 +11,7 @@ class ItemGetter(Dataset):
         assert len(eng_sentences) == len(ger_sentences)
         self.eng_sentences = eng_sentences
         self.ger_sentences = ger_sentences
-        self.tokenizer = sentencepiece.SentencePieceProcessor()
-        self.tokenizer.Load('tokenizer.model')
-        self.tokenizer.dic = {i: self.tokenizer.decode([i]) for i in
-                              range(self.tokenizer.vocab_size())}
+        self.tokenizer = tokenizer
         self.eng_padding = Padding(seq_len, 'english')
         self.ger_padding = Padding(seq_len, 'german')
         self.to_tensor = lambda x: LongTensor(x)

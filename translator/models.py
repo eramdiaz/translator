@@ -1,36 +1,41 @@
 """Build of the transformer architecture"""
 
 from translator.blocks import *
-import torch
+from torch import nn
 
 
-class EncoderCell(torch.nn.Module):
+class EncoderCell(nn.Module):
     def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
         super().__init__()
         self.attention_layer = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
-        self.layernorm = torch.nn.LayerNorm(d_model)
+        self.layernorm_1 = nn.LayerNorm(d_model)
         self.feedforward = FeedForward(d_model, d_ff)
+        self.layernorm_2 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(p=0.1)
 
     def forward(self, q, k, v):
-        x = self.layernorm(self.attention_layer(q, k, v) + q)
-        return self.layernorm(self.feedforward(x) + x)
+        x = self.layernorm_1(self.dropout(self.attention_layer(q, k, v)) + q)
+        return self.layernorm_2(self.dropout(self.feedforward(x)) + x)
 
 
-class DecoderCell(torch.nn.Module):
+class DecoderCell(nn.Module):
     def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
         super().__init__()
         self.self_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, True)
-        self.layernorm = torch.nn.LayerNorm(d_model)
+        self.layernorm_1 = nn.LayerNorm(d_model)
         self.enc_dec_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
+        self.layernorm_2 = nn.LayerNorm(d_model)
         self.feedforward = FeedForward(d_model, d_ff)
+        self.layernorm_3 = nn.LayerNorm(d_model)
+        self.dropout = nn.Dropout(p=0.1)
 
     def forward(self, q, dec_k, dec_v, enc_k, enc_v):
-        x = self.layernorm(self.self_attention(q, dec_k, dec_v) + q)
-        x = self.layernorm(self.enc_dec_attention(x, enc_k, enc_v) + x)
-        return self.layernorm(self.feedforward(x) + x)
+        x = self.layernorm_1(self.dropout(self.self_attention(q, dec_k, dec_v)) + q)
+        x = self.layernorm_2(self.dropout(self.enc_dec_attention(x, enc_k, enc_v)) + x)
+        return self.layernorm_3(self.dropout(self.feedforward(x)) + x)
 
 
-class Transformer(torch.nn.Module):
+class Transformer(nn.Module):
     def __init__(self, n, vocab_size, seq_len, d_model, d_k, d_v, h, d_ff):
         super().__init__()
         self.n = n
@@ -42,30 +47,31 @@ class Transformer(torch.nn.Module):
         self.h = h
         self.d_ff = d_ff
         self.embedding = Embedding(self.vocab_size, self.d_model)
-        self.positional_encoding = AddPE(self.seq_len, self.d_model)
+        self.positional_encoding = PositionalEncoding(self.seq_len, self.d_model)
+        self.dropout = nn.Dropout(p=0.1)
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()
-        self.final_projection = torch.nn.Linear(self.d_model, self.vocab_size)
+        self.final_projection = nn.Linear(self.d_model, self.vocab_size)
 
     def _get_encoder(self):
         encoder = []
         for i in range(self.n):
             encoder.append(EncoderCell(self.d_model, self.d_k, self.d_v, self.h,
                                        self.seq_len, self.d_ff))
-        return torch.nn.ModuleList(encoder)
+        return nn.ModuleList(encoder)
 
     def _get_decoder(self):
         decoder = []
         for i in range(self.n):
             decoder.append(DecoderCell(self.d_model, self.d_k, self.d_v, self.h,
                                        self.seq_len, self.d_ff))
-        return torch.nn.ModuleList(decoder)
+        return nn.ModuleList(decoder)
 
     def forward(self, inputs, outputs):
-        inputs = self.positional_encoding(self.embedding(inputs))
+        inputs = self.dropout(self.positional_encoding(self.embedding(inputs)))
         for module in self.encoder:
             inputs = module(inputs, inputs, inputs)
-        outputs = self.positional_encoding(self.embedding(outputs))
+        outputs = self.dropout(self.positional_encoding(self.embedding(outputs)))
         for module in self.decoder:
             outputs = module(outputs, outputs, outputs, inputs, inputs)
         return self.final_projection(outputs)

@@ -1,8 +1,9 @@
-"""Train our tokenizer."""
+"""Train our tokenizer"""
 
 import sentencepiece
+import os
 
-CORPUS_FILE = 'data/train_subset.txt'
+CORPUS_FILE = '/'.join(__file__.split('/', -2)[:-2]) + '/data/train_subset.txt'
 MODEL_PREFIX = 'tokenizer'
 VOCAB_SIZE = 37000
 
@@ -14,3 +15,4 @@ if __name__ == '__main__':
       f'--character_coverage={1.0} '
       '--model_type=bpe '
    )
+
