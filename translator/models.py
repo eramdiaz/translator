@@ -1,6 +1,7 @@
 """Build of the transformer architecture"""
 
 from translator.blocks import *
+from translator.tokenizer import tokenizer
 from torch import nn
 
 
@@ -75,3 +76,18 @@ class Transformer(nn.Module):
         for module in self.decoder:
             outputs = module(outputs, outputs, outputs, inputs, inputs)
         return self.final_projection(outputs)
+
+    def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
+        sequence = torch.LongTensor([start_token])
+        it = 0
+        tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence))
+        while True:
+            output = self.forward(tokenized_input, sequence)
+            prediction = output[:, -1, :].topk(1)[1].squeeze(0)
+            if prediction.item() == end_token:
+                break
+            sequence = torch.cat((sequence, prediction), -1)
+            it += 1
+            if it == self.seq_len:
+                break
+        return tokenizer.decode(sequence[1:].tolist())

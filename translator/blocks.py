@@ -14,7 +14,7 @@ class Padding:
         #end of sentence (2) and ignore (-10) tokens are added
         if self.language == 'english':
             if len(x) < self.seq_len:
-                padded_seq = x + [2] + [-10 for i in range(len(x) + 1, self.seq_len)]
+                padded_seq = x + [2 for i in range(len(x), self.seq_len)]
                 return padded_seq #, len(x) + 1
             padded_seq = x[:self.seq_len - 1] + [2]
             return padded_seq #, self.seq_len

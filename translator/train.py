@@ -12,18 +12,18 @@ from translator.learning_rate import WarmUpLr
 
 N = 2
 D_MODEL = 512
-SEQ_LEN = 100
+SEQ_LEN = 96
 H = 8
 D_K = D_V = 64
 D_FF = 2048
-VOCAB_SIZE = 8000
+VOCAB_SIZE = 37000
 WARMUP_STEPS = 4000
 BATCH_SIZE = 256
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CHECKPOINTS_FOLDER = '/'.join(__file__.split('/', -2)[:-2]) + '/checkpoints'
 assert os.path.exists(CHECKPOINTS_FOLDER), \
     'Create a checkpoints folder in translator for saving the model.'
-CHECKPOINT = CHECKPOINTS_FOLDER + '/' + str(uuid4()) + '.pth'
+CHECKPOINT_PATH = CHECKPOINTS_FOLDER + '/' + str(uuid4()) + '.pth'
 
 translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
 
@@ -42,12 +42,10 @@ validloader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
 loss = torch.nn.CrosEntropyLoss(ignore_index=-10)
 
 
-def loss_function(output, targets):
-    sentences, lengths = targets
+def loss_function(predictions, targets):
     total_loss = 0.
-    for batch, sentence, length in zip(output, sentences, lengths):
-        true_sentence = sentence[1:length.item()]
-        loss_item = loss(batch[:(length.item() - 1), :], true_sentence)
+    for pred, target in zip(predictions, targets):
+        loss_item = loss(pred[:-1], target[1:])
         total_loss += loss_item
     return total_loss
 
@@ -59,19 +57,9 @@ def train():
     min_valid_loss = 1e10
     epochs = 0
     it = 0.
-#    test_sentence_1 = train_set[30][0]
-#    test_sentence_2 = valid_set[40][0]
-#
-#    print(test_sentence_1 + '\n')
-#    print(train_set[30][1])
-#    print('\n')
-#    prediction = predict_function(test_sentence_1)
-#    print(bpe._model.decode(prediction) + '\n')
-#    print(test_sentence_2 + '\n')
-#    print(valid_set[40][1])
-#    print('\n')
-#    prediction = predict_function(test_sentence_2)
-#    print(bpe._model.decode(prediction) + '\n')
+    translator.eval()
+    train_sentence = EN_TRAIN[30]
+    valid_sentence = EN_VALID[40]
 
     while True:
         print('Start epoch %d' % epochs)
@@ -91,14 +79,13 @@ def train():
                 total_loss = 0.
                 eval_it = 0.
                 for eng_sentences, ger_sentences in validloader:
-#                    if eval_it == 0:
-#                        print('\n' + test_sentence_1 + '\n')
-#                        prediction = predict_function(test_sentence_1)
-#                        print(bpe._model.decode(prediction) + '\n')
-#
-#                        print(test_sentence_2 + '\n')
-#                        prediction = predict_function(test_sentence_2)
-#                        print(bpe._model.decode(prediction) + '\n')
+
+                    if eval_it == 0:
+                        print('\n' + train_sentence + '\n')
+                        print(translator.predict(train_sentence), '\n')
+
+                        print(valid_sentence + '\n')
+                        print(translator.predict(valid_sentence), '\n')
 
                     output = translator.forward(eng_sentences, ger_sentences)
                     loss_item = loss_function(output, ger_sentences)
@@ -109,7 +96,12 @@ def train():
                 if total_loss < min_valid_loss:
                     min_valid_loss = total_loss
                     print('Saving...')
-                    torch.save(translator.state_dict(), CHECKPOINT)
+                    checkpoint = {
+                        'n': N, 'vocab_size': VOCAB_SIZE, 'seq_len': SEQ_LEN,
+                        'd_model': D_MODEL, 'd_k': D_K, 'd_v': D_V, 'h': H,
+                        'd_ff': D_FF, 'state_dict': translator.state_dict()
+                    }
+                    torch.save(checkpoint, CHECKPOINT_PATH)
             translator.train()
         it += 1
         lr_schedule(it)
