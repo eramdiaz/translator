@@ -64,11 +64,11 @@ class MultiHeadAttention(torch.nn.Module):
         self.d_k = d_k
         self.d_v = d_v
         self.h = h
+        self.seq_len = seq_len
         self.masked = masked
         self.softmax = torch.nn.Softmax(dim=-1)
 
         if self.masked:
-            self.seq_len = seq_len
             self.mask = torch.nn.Parameter(torch.ones((1, self.seq_len, self.seq_len)) * -1e10,
                                            requires_grad=False)
 
