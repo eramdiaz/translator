@@ -48,7 +48,7 @@ class Transformer(nn.Module):
         self.h = h
         self.d_ff = d_ff
         self.embedding = Embedding(self.vocab_size, self.d_model)
-        self.positional_encoding = PositionalEncoding(self.seq_len, self.d_model)
+        self.positional_encoding = PositionalEncoding(self.d_model)
         self.dropout = nn.Dropout(p=0.1)
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()

@@ -37,24 +37,18 @@ class Embedding(torch.nn.Module):
 
 
 class PositionalEncoding(torch.nn.Module):
-    def __init__(self, seq_len, emb_dim, maxlen=1000):
+    def __init__(self, emb_dim, maxlen=1000):
         super().__init__()
-        self.seq_len = seq_len
         self.emb_dim = emb_dim
         self.maxlen = maxlen
         self.positional_encoding = self._get_positional_encoding()
 
     def _get_positional_encoding(self):
-        position = torch.arange(0, self.maxlen, dtype=torch.float32)
-        sin_signal = torch.stack([torch.stack([
-            torch.sin(position[j]/10000**(i/self.emb_dim))
-            for i in range(0, self.emb_dim, 2)]) for j in range(self.maxlen)])
-        cos_signal = torch.stack([torch.stack([
-            torch.cos(position[j]/10000**((i - 1)/self.emb_dim))
-            for i in range(1, self.emb_dim, 2)]) for j in range(self.maxlen)])
-        signal = torch.empty(self.maxlen, self.emb_dim)
-        signal[:, ::2] = sin_signal
-        signal[:, 1::2] = cos_signal
+        signal = [[position / np.power(1e4, 2 * (i // 2) / self.emb_dim)
+                   for i in range(self.emb_dim)] for position in range(self.maxlen)]
+        signal = torch.Tensor(signal)
+        signal[:, ::2] = torch.sin(signal[:, ::2])
+        signal[:, 1::2] = torch.cos(signal[:, 1::2])
         signal = torch.nn.Parameter(signal.unsqueeze(0), requires_grad=False)
         return signal
 
