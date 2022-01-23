@@ -80,7 +80,7 @@ class Transformer(nn.Module):
     def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
         sequence = torch.LongTensor([start_token])
         it = 0
-        tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence))
+        tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence) + [end_token])
         while True:
             output = self.forward(tokenized_input, sequence)
             prediction = output[:, -1, :].topk(1)[1].squeeze(0)
@@ -88,6 +88,6 @@ class Transformer(nn.Module):
                 break
             sequence = torch.cat((sequence, prediction), -1)
             it += 1
-            if it == self.seq_len:
+            if it == self.positional_encoding.maxlen:
                 break
         return tokenizer.decode(sequence[1:].tolist())

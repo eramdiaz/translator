@@ -47,7 +47,7 @@ def loss_function(predictions, targets):
     for pred, target in zip(predictions, targets):
         loss_item = loss(pred[:-1], target[1:])
         total_loss += loss_item
-    return total_loss
+    return total_loss / predictions.shape[0]
 
 
 def train():
