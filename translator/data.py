@@ -19,15 +19,15 @@ class ItemGetter(Dataset):
     def __getitem__(self, item):
         x = self.eng_sentences[item]
         x = self.tokenizer.encode_as_ids(x)
-        x = self.eng_padding(x)
-        x = self.to_tensor(x)
+        x, x_length = self.eng_padding(x)
+        x, x_length = self.to_tensor(x), self.to_tensor(x_length)
 
         y = self.ger_sentences[item]
         y = self.tokenizer.encode_as_ids(y)
-        y = self.ger_padding(y)
-        y = self.to_tensor(y)
+        y, y_length = self.ger_padding(y)
+        y, y_length = self.to_tensor(y), self.to_tensor(y_length)
 
-        return x, y
+        return (x, x_length),  (y, y_length)
 
     def __len__(self):
         return len(self.eng_sentences)

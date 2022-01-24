@@ -15,15 +15,15 @@ class Padding:
         if self.language == 'english':
             if len(x) < self.seq_len:
                 padded_seq = x + [2 for i in range(len(x), self.seq_len)]
-                return padded_seq #, len(x) + 1
+                return padded_seq, [len(x) + 1]
             padded_seq = x[:self.seq_len - 1] + [2]
-            return padded_seq #, self.seq_len
+            return padded_seq, [self.seq_len]
         if self.language == 'german':
             if len(x) < (self.seq_len - 1):
                 padded_seq = [1] + x + [2] + [-10 for i in range(len(x) + 2, self.seq_len)]
-                return padded_seq #, len(x) + 2
+                return padded_seq, [len(x) + 2]
             padded_seq = [1] + x[:self.seq_len - 2] + [2]
-            return padded_seq #, self.seq_len
+            return padded_seq, [self.seq_len]
 
 
 class Embedding(torch.nn.Module):
@@ -58,7 +58,6 @@ class PositionalEncoding(torch.nn.Module):
 
 class MultiHeadAttention(torch.nn.Module):
     def __init__(self, d_model, d_k, d_v, h, seq_len, masked=False):
-
         super().__init__()
         self.d_model = d_model
         self.d_k = d_k
@@ -95,7 +94,7 @@ class MultiHeadAttention(torch.nn.Module):
             for i, ll2 in enumerate(l2):
                 a[i, ll2:, :] = -1e10
         if self.masked:
-            mask = self.get_mask(a.shape[1])
+            mask = self.get_mask(a.shape[-2])
             a = a.tril() + mask.triu(1)
         a = self.softmax(a)
         return torch.matmul(a, v)

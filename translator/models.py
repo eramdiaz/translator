@@ -14,8 +14,8 @@ class EncoderCell(nn.Module):
         self.layernorm_2 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(p=0.1)
 
-    def forward(self, q, k, v):
-        x = self.layernorm_1(self.dropout(self.attention_layer(q, k, v)) + q)
+    def forward(self, q, k, v, lengths=None):
+        x = self.layernorm_1(self.dropout(self.attention_layer(q, k, v, lengths, lengths)) + q)
         return self.layernorm_2(self.dropout(self.feedforward(x)) + x)
 
 
@@ -30,9 +30,11 @@ class DecoderCell(nn.Module):
         self.layernorm_3 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(p=0.1)
 
-    def forward(self, q, dec_k, dec_v, enc_k, enc_v):
-        x = self.layernorm_1(self.dropout(self.self_attention(q, dec_k, dec_v)) + q)
-        x = self.layernorm_2(self.dropout(self.enc_dec_attention(x, enc_k, enc_v)) + x)
+    def forward(self, q, dec_k, dec_v, enc_k, enc_v, e_lengths=None, d_lengths=None):
+        x = self.layernorm_1(self.dropout(
+            self.self_attention(q, dec_k, dec_v, d_lengths, d_lengths)) + q)
+        x = self.layernorm_2(self.dropout(
+            self.enc_dec_attention(x, enc_k, enc_v, e_lengths, d_lengths)) + x)
         return self.layernorm_3(self.dropout(self.feedforward(x)) + x)
 
 
@@ -68,13 +70,14 @@ class Transformer(nn.Module):
                                        self.seq_len, self.d_ff))
         return nn.ModuleList(decoder)
 
-    def forward(self, inputs, outputs):
+    def forward(self, inputs, outputs, inputs_lengths=None, outputs_lengths=None):
         inputs = self.dropout(self.positional_encoding(self.embedding(inputs)))
         for module in self.encoder:
-            inputs = module(inputs, inputs, inputs)
+            inputs = module(inputs, inputs, inputs, inputs_lengths)
         outputs = self.dropout(self.positional_encoding(self.embedding(outputs)))
         for module in self.decoder:
-            outputs = module(outputs, outputs, outputs, inputs, inputs)
+            outputs = module(outputs, outputs, outputs, inputs, inputs,
+                             inputs_lengths, outputs_lengths)
         return self.final_projection(outputs)
 
     def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
