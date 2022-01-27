@@ -84,6 +84,7 @@ class Transformer(nn.Module):
         sequence = torch.LongTensor([start_token])
         it = 0
         tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence) + [end_token])
+        self.eval()
         while True:
             output = self.forward(tokenized_input, sequence)
             prediction = output[:, -1, :].topk(1)[1].squeeze(0)

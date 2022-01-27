@@ -86,18 +86,18 @@ class MultiHeadAttention(torch.nn.Module):
         return torch.nn.ModuleList(projections)
 
     def compute_simple_attention(self, q, k, v, l1=None, l2=None):
-        a = torch.matmul(q, k.transpose(-2, -1)) / np.sqrt(self.d_k)
+        w = torch.matmul(q, k.transpose(-2, -1)) / np.sqrt(self.d_k)
         if l1 is not None:
             for i, ll1 in enumerate(l1):
-                a[i, :, ll1:] = -1e10
+                w[i, :, ll1:] = -1e10
         if l2 is not None:
             for i, ll2 in enumerate(l2):
-                a[i, ll2:, :] = -1e10
+                w[i, ll2:, :] = -1e10
         if self.masked:
-            mask = self.get_mask(a.shape[-2])
-            a = a.tril() + mask.triu(1)
-        a = self.softmax(a)
-        return torch.matmul(a, v)
+            mask = self.get_mask(w.shape[-2])
+            w = w.tril() + mask.triu(1)
+        w = self.softmax(w)
+        return torch.matmul(w, v)
 
     def forward(self, q, k, v, l1=None, l2=None):
         heads = []

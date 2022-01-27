@@ -27,18 +27,18 @@ CHECKPOINT_PATH = CHECKPOINTS_FOLDER + '/' + str(uuid4()) + '.pth'
 
 translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
 
-
-EN_TRAIN = pd.read_csv('data/en_train.txt', delimiter='\n', header=None)[0].tolist() #nrows
-GER_TRAIN = pd.read_csv('data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
-EN_VALID = pd.read_csv('data/en_valid.txt', delimiter='\n', header=None)[0].tolist()
-GER_VALID = pd.read_csv('data/ger_valid.txt', delimiter='\n', header=None)[0].tolist()
+PROJECT_FOLDER = '/'.join(__file__.split('/')[:-2])
+EN_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/en_train.txt', delimiter='\n', header=None)[0].tolist() #nrows
+GER_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
+EN_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/en_valid.txt', delimiter='\n', header=None)[0].tolist()
+GER_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_valid.txt', delimiter='\n', header=None)[0].tolist()
 
 train_dataset = ItemGetter(EN_TRAIN, GER_TRAIN, SEQ_LEN)
 valid_dataset = ItemGetter(EN_VALID, GER_VALID, SEQ_LEN)
 trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
 validloader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
 
-loss = torch.nn.CrosEntropyLoss(ignore_index=-10)
+loss = torch.nn.CrossEntropyLoss(ignore_index=-10)
 
 
 def loss_function(predictions, targets):
@@ -63,11 +63,11 @@ def train():
     while True:
         print('Start epoch %d' % epochs)
         translator.train()
-        for (eng_sentences, eng_lengths),  (ger_sentences, ger_lengths) in trainloader:
-            eng_sentences, ger_sentences = eng_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-            eng_lengths, ger_lengths = eng_lengths.to(DEVICE), ger_lengths.to(DEVICE)
+        for (en_sentences, en_lengths),  (ger_sentences, ger_lengths) in trainloader:
+            en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
+            en_lengths, ger_lengths = en_lengths.to(DEVICE), ger_lengths.to(DEVICE)
             optim.zero_grad()
-            output = translator.forward(eng_sentences, ger_sentences, eng_lengths, ger_lengths)
+            output = translator.forward(en_sentences, ger_sentences, en_lengths, ger_lengths)
             loss_item = loss_function(output, ger_sentences)
             loss_item.backward()
             optim.step()
@@ -78,7 +78,7 @@ def train():
                 translator.eval()
                 total_loss = 0.
                 eval_it = 0.
-                for (eng_sentences, eng_lengths), (ger_sentences, ger_lengths) in validloader:
+                for (en_sentences, en_lengths), (ger_sentences, ger_lengths) in validloader:
 
                     if eval_it == 0:
                         print('\n' + train_sentence + '\n')
@@ -87,11 +87,9 @@ def train():
                         print(valid_sentence + '\n')
                         print(translator.predict(valid_sentence), '\n')
 
-                    eng_sentences, ger_sentences = eng_sentences.to(DEVICE), \
-                                                   ger_sentences.to(DEVICE)
-                    eng_lengths, ger_lengths = eng_lengths.to(DEVICE), ger_lengths.to(DEVICE)
-                    output = translator.forward(eng_sentences, ger_sentences,
-                                                eng_lengths, ger_lengths)
+                    en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
+                    en_lengths, ger_lengths = en_lengths.to(DEVICE), ger_lengths.to(DEVICE)
+                    output = translator.forward(en_sentences, ger_sentences, en_lengths, ger_lengths)
                     loss_item = loss_function(output, ger_sentences)
                     total_loss += loss_item.item()
                     eval_it += 1
