@@ -2,3 +2,7 @@
 .git
 checkpoints
 data
+.idea
+translator/__pycache__
+translator/test.vocab
+translator/test.model

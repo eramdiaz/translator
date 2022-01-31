@@ -38,7 +38,7 @@ valid_dataset = ItemGetter(EN_VALID, GER_VALID, SEQ_LEN)
 trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
 validloader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
 
-loss = torch.nn.CrossEntropyLoss(ignore_index=-10)
+loss = torch.nn.CrossEntropyLoss(ignore_index=3)
 
 
 def loss_function(predictions, targets):
