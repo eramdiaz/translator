@@ -58,14 +58,14 @@ class Transformer(nn.Module):
 
     def _get_encoder(self):
         encoder = []
-        for i in range(self.n):
+        for _ in range(self.n):
             encoder.append(EncoderCell(self.d_model, self.d_k, self.d_v, self.h,
                                        self.seq_len, self.d_ff))
         return nn.ModuleList(encoder)
 
     def _get_decoder(self):
         decoder = []
-        for i in range(self.n):
+        for _ in range(self.n):
             decoder.append(DecoderCell(self.d_model, self.d_k, self.d_v, self.h,
                                        self.seq_len, self.d_ff))
         return nn.ModuleList(decoder)
@@ -81,6 +81,7 @@ class Transformer(nn.Module):
         return self.final_projection(outputs)
 
     def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
+        # TODO: add ' . ', ' ? ', ' ! ' like in train data if the sentence doesn't finish with them?
         sequence = torch.LongTensor([start_token])
         it = 0
         tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence) + [end_token])
