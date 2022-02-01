@@ -3,6 +3,7 @@
 import os
 import pandas as pd
 import torch
+from time import time
 from uuid import uuid4
 from torch.utils.data import DataLoader
 from translator.data import ItemGetter
@@ -50,7 +51,7 @@ def loss_function(predictions, targets):
 
 
 def train():
-    optim = torch.optim.Adam(translator.parameters(), lr=1e-4, betas=(0.9, 0.98), eps=1e-09)
+    optim = torch.optim.Adam(translator.parameters(), lr=1e-7, betas=(0.9, 0.98), eps=1e-09)
     lr_schedule = WarmUpLr(WARMUP_STEPS, D_MODEL, optim.param_groups)
     translator.to(DEVICE)
     min_valid_loss = 1e10
@@ -64,6 +65,7 @@ def train():
         print('Start epoch %d' % epochs)
         translator.train()
         for (en_sentences, en_lengths),  (ger_sentences, ger_lengths) in trainloader:
+            start = time()
             en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
             en_lengths, ger_lengths = en_lengths.to(DEVICE), ger_lengths.to(DEVICE)
             optim.zero_grad()
@@ -71,7 +73,9 @@ def train():
             loss_item = loss_function(output, ger_sentences)
             loss_item.backward()
             optim.step()
-            print(f'TRAIN iteration {it}; loss: {loss_item.item()}; lr: {optim.param_groups[0]["lr"]}')
+            end = time()
+            print(f'TRAIN iteration {it}; loss: {loss_item.item()}; '
+                  f'lr: {optim.param_groups[0]["lr"]}; iteration time: {end - start}')
 
         if it % 500 == 0:
             with torch.no_grad():

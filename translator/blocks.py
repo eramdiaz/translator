@@ -4,6 +4,9 @@ import numpy as np
 import torch
 
 
+MAX_LEN = 1000
+
+
 class Padding:
     def __init__(self, seq_len, language):
         self.seq_len = seq_len
@@ -37,15 +40,15 @@ class Embedding(torch.nn.Module):
 
 
 class PositionalEncoding(torch.nn.Module):
-    def __init__(self, emb_dim, maxlen=1000):
+    def __init__(self, emb_dim, max_len=MAX_LEN):
         super().__init__()
         self.emb_dim = emb_dim
-        self.maxlen = maxlen
+        self.max_len = max_len
         self.positional_encoding = self._get_positional_encoding()
 
     def _get_positional_encoding(self):
         signal = [[position / np.power(1e4, 2 * (i // 2) / self.emb_dim)
-                   for i in range(self.emb_dim)] for position in range(self.maxlen)]
+                   for i in range(self.emb_dim)] for position in range(self.max_len)]
         signal = torch.Tensor(signal)
         signal[:, ::2] = torch.sin(signal[:, ::2])
         signal[:, 1::2] = torch.cos(signal[:, 1::2])
@@ -57,7 +60,7 @@ class PositionalEncoding(torch.nn.Module):
 
 
 class MultiHeadAttention(torch.nn.Module):
-    def __init__(self, d_model, d_k, d_v, h, seq_len, masked=False):
+    def __init__(self, d_model, d_k, d_v, h, seq_len, masked=False, max_len=MAX_LEN):
         super().__init__()
         self.d_model = d_model
         self.d_k = d_k
@@ -68,7 +71,7 @@ class MultiHeadAttention(torch.nn.Module):
         self.softmax = torch.nn.Softmax(dim=-1)
 
         if self.masked:
-            self.mask = torch.nn.Parameter(torch.ones((1, self.seq_len, self.seq_len)) * -1e10,
+            self.mask = torch.nn.Parameter(torch.ones((1, max_len, max_len)) * -1e10,
                                            requires_grad=False)
 
         self.queries_projections = self._get_projections(self.d_k)

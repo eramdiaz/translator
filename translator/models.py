@@ -93,6 +93,6 @@ class Transformer(nn.Module):
                 break
             sequence = torch.cat((sequence, prediction), -1)
             it += 1
-            if it == self.positional_encoding.maxlen:
+            if it == self.positional_encoding.max_len:
                 break
         return tokenizer.decode(sequence[1:].tolist())
