@@ -31,13 +31,13 @@ translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
 PROJECT_FOLDER = '/'.join(__file__.split('/')[:-2])
 EN_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/en_train.txt', delimiter='\n', header=None)[0].tolist() #nrows
 GER_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
-EN_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/en_valid.txt', delimiter='\n', header=None)[0].tolist()
-GER_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_valid.txt', delimiter='\n', header=None)[0].tolist()
+EN_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/en_train.txt', delimiter='\n', header=None)[0].tolist()
+GER_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
 
 train_dataset = ItemGetter(EN_TRAIN, GER_TRAIN, SEQ_LEN)
 valid_dataset = ItemGetter(EN_VALID, GER_VALID, SEQ_LEN)
-trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE)
-validloader = DataLoader(valid_dataset, batch_size=BATCH_SIZE)
+trainloader = DataLoader(train_dataset, batch_size=3, shuffle=True, num_workers=2)
+validloader = DataLoader(valid_dataset, batch_size=3, shuffle=True, num_workers=2)
 
 loss = torch.nn.CrossEntropyLoss(ignore_index=3)
 
@@ -51,15 +51,15 @@ def loss_function(predictions, targets):
 
 
 def train():
-    optim = torch.optim.Adam(translator.parameters(), lr=1e-7, betas=(0.9, 0.98), eps=1e-09)
-    lr_schedule = WarmUpLr(WARMUP_STEPS, D_MODEL, optim.param_groups)
+    optim = torch.optim.Adam(translator.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-09)
+    #lr_schedule = WarmUpLr(WARMUP_STEPS, D_MODEL, optim.param_groups)
     translator.to(DEVICE)
     min_valid_loss = 1e10
     epochs = 0
     it = 0.
     translator.eval()
-    train_sentence = EN_TRAIN[30]
-    valid_sentence = EN_VALID[40]
+    train_sentence = EN_TRAIN[2]
+    valid_sentence = EN_VALID[4]
 
     while True:
         print('Start epoch %d' % epochs)
@@ -74,44 +74,49 @@ def train():
             loss_item.backward()
             optim.step()
             end = time()
-            print(f'TRAIN iteration {it}; loss: {loss_item.item()}; '
-                  f'lr: {optim.param_groups[0]["lr"]}; iteration time: {end - start}')
+            print(f'TRAIN iteration {it}; loss: {round(loss_item.item(), 4)}; '
+                  f'lr: {optim.param_groups[0]["lr"]}; '
+                  f'iteration time: {round(end - start, 4)}')
 
-        if it % 500 == 0:
-            with torch.no_grad():
-                translator.eval()
-                total_loss = 0.
-                eval_it = 0.
-                for (en_sentences, en_lengths), (ger_sentences, ger_lengths) in validloader:
+            if it % 500 == 0 and it > 0:
+                with torch.no_grad():
+                    translator.eval()
+                    total_loss = 0.
+                    eval_it = 0.
+                    for (en_sentences_2, en_lengths_2), (ger_sentences_2, ger_lengths_2) in validloader:
 
-                    if eval_it == 0:
-                        print('\n' + train_sentence + '\n')
-                        print(translator.predict(train_sentence), '\n')
+                        if eval_it == 0:
+                            for sent in EN_TRAIN:
+                                print('\n' + sent + '\n')
+                                print(translator.predict(sent), '\n')
 
-                        print(valid_sentence + '\n')
-                        print(translator.predict(valid_sentence), '\n')
+                            print('\n' + train_sentence + '\n')
+                            print(translator.predict(train_sentence), '\n')
 
-                    en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-                    en_lengths, ger_lengths = en_lengths.to(DEVICE), ger_lengths.to(DEVICE)
-                    output = translator.forward(en_sentences, ger_sentences, en_lengths, ger_lengths)
-                    loss_item = loss_function(output, ger_sentences)
-                    total_loss += loss_item.item()
-                    eval_it += 1
-                total_loss = total_loss / eval_it
-                print(f'VALID iteration {it}; loss: {total_loss};')
-                if total_loss < min_valid_loss:
-                    min_valid_loss = total_loss
-                    print('Saving...')
-                    checkpoint = {
-                        'n': N, 'vocab_size': VOCAB_SIZE, 'seq_len': SEQ_LEN,
-                        'd_model': D_MODEL, 'd_k': D_K, 'd_v': D_V, 'h': H,
-                        'd_ff': D_FF, 'state_dict': translator.state_dict()
-                    }
-                    torch.save(checkpoint, CHECKPOINT_PATH)
-            translator.train()
-        it += 1
-        lr_schedule(it)
-    epochs += 1
+                            print(valid_sentence + '\n')
+                            print(translator.predict(valid_sentence), '\n')
+
+                        en_sentences_2, ger_sentences_2 = en_sentences_2.to(DEVICE), ger_sentences_2.to(DEVICE)
+                        en_lengths_2, ger_lengths_2 = en_lengths_2.to(DEVICE), ger_lengths_2.to(DEVICE)
+                        output = translator.forward(en_sentences_2, ger_sentences_2, en_lengths_2, ger_lengths_2)
+                        loss_item = loss_function(output, ger_sentences_2)
+                        total_loss += loss_item.item()
+                        eval_it += 1
+                    total_loss = total_loss / eval_it
+                    print(f'VALID iteration {it}; valid_loss: {round(total_loss, 4)};')
+                    if total_loss < min_valid_loss:
+                        min_valid_loss = total_loss
+                        print('Saving...')
+                        checkpoint = {
+                            'n': N, 'vocab_size': VOCAB_SIZE, 'seq_len': SEQ_LEN,
+                            'd_model': D_MODEL, 'd_k': D_K, 'd_v': D_V, 'h': H,
+                            'd_ff': D_FF, 'state_dict': translator.state_dict()
+                        }
+                        torch.save(checkpoint, CHECKPOINT_PATH)
+                translator.train()
+            it += 1
+            #lr_schedule(it)
+        epochs += 1
 
 
 if __name__ == '__main__':

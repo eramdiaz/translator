@@ -9,9 +9,9 @@ class EncoderCell(nn.Module):
     def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
         super().__init__()
         self.attention_layer = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
-        self.layernorm_1 = nn.LayerNorm(d_model)
+        self.layernorm_1 = nn.LayerNorm(d_model, eps=1e-6)
         self.feedforward = FeedForward(d_model, d_ff)
-        self.layernorm_2 = nn.LayerNorm(d_model)
+        self.layernorm_2 = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout = nn.Dropout(p=0.1)
 
     def forward(self, q, k, v, lengths=None):
@@ -23,11 +23,11 @@ class DecoderCell(nn.Module):
     def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
         super().__init__()
         self.self_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, True)
-        self.layernorm_1 = nn.LayerNorm(d_model)
+        self.layernorm_1 = nn.LayerNorm(d_model, eps=1e-6)
         self.enc_dec_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
-        self.layernorm_2 = nn.LayerNorm(d_model)
+        self.layernorm_2 = nn.LayerNorm(d_model, eps=1e-6)
         self.feedforward = FeedForward(d_model, d_ff)
-        self.layernorm_3 = nn.LayerNorm(d_model)
+        self.layernorm_3 = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout = nn.Dropout(p=0.1)
 
     def forward(self, q, dec_k, dec_v, enc_k, enc_v, e_lengths=None, d_lengths=None):
@@ -54,7 +54,9 @@ class Transformer(nn.Module):
         self.dropout = nn.Dropout(p=0.1)
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()
-        self.final_projection = nn.Linear(self.d_model, self.vocab_size)
+        self.final_projection = nn.Linear(self.d_model, self.vocab_size, bias=False)
+
+        torch.nn.init.xavier_uniform_(self.final_projection.weight, LINEAR_GAIN)
 
     def _get_encoder(self):
         encoder = []
