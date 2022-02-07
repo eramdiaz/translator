@@ -11,7 +11,7 @@ from translator.models import Transformer
 from translator.learning_rate import WarmUpLr
 
 
-N = 2
+N = 3
 D_MODEL = 512
 SEQ_LEN = 96
 H = 8
@@ -22,7 +22,7 @@ WARMUP_STEPS = 4000
 BATCH_SIZE = 256
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CHECKPOINTS_FOLDER = '/'.join(__file__.split('/', -2)[:-2]) + '/checkpoints'
-assert os.path.exists(CHECKPOINTS_FOLDER), \
+assert os.path.exists(CHECKPOINTS_FOLDER),\
     'Create a checkpoints folder in translator for saving the model.'
 CHECKPOINT_PATH = CHECKPOINTS_FOLDER + '/' + str(uuid4()) + '.pth'
 
@@ -31,13 +31,13 @@ translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
 PROJECT_FOLDER = '/'.join(__file__.split('/')[:-2])
 EN_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/en_train.txt', delimiter='\n', header=None)[0].tolist() #nrows
 GER_TRAIN = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
-EN_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/en_train.txt', delimiter='\n', header=None)[0].tolist()
-GER_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
+EN_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/en_valid.txt', delimiter='\n', header=None)[0].tolist()
+GER_VALID = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_valid.txt', delimiter='\n', header=None)[0].tolist()
 
 train_dataset = ItemGetter(EN_TRAIN, GER_TRAIN, SEQ_LEN)
 valid_dataset = ItemGetter(EN_VALID, GER_VALID, SEQ_LEN)
-trainloader = DataLoader(train_dataset, batch_size=3, shuffle=True, num_workers=2)
-validloader = DataLoader(valid_dataset, batch_size=3, shuffle=True, num_workers=2)
+trainloader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+validloader = DataLoader(valid_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
 
 loss = torch.nn.CrossEntropyLoss(ignore_index=3)
 
@@ -51,25 +51,25 @@ def loss_function(predictions, targets):
 
 
 def train():
-    optim = torch.optim.Adam(translator.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-09)
-    #lr_schedule = WarmUpLr(WARMUP_STEPS, D_MODEL, optim.param_groups)
+    optim = torch.optim.Adam(translator.parameters(), lr=1e-7, betas=(0.9, 0.98), eps=1e-09)
+    lr_schedule = WarmUpLr(WARMUP_STEPS, D_MODEL, optim.param_groups)
     translator.to(DEVICE)
     min_valid_loss = 1e10
     epochs = 0
     it = 0.
     translator.eval()
-    train_sentence = EN_TRAIN[2]
-    valid_sentence = EN_VALID[4]
+    train_sentence = EN_TRAIN[30]
+    valid_sentence = EN_VALID[40]
 
     while True:
         print('Start epoch %d' % epochs)
         translator.train()
-        for (en_sentences, en_lengths),  (ger_sentences, ger_lengths) in trainloader:
+        for (en_sentences, en_mask), (ger_sentences, ger_mask) in trainloader:
             start = time()
             en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-            en_lengths, ger_lengths = en_lengths.to(DEVICE), ger_lengths.to(DEVICE)
+            en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
             optim.zero_grad()
-            output = translator.forward(en_sentences, ger_sentences, en_lengths, ger_lengths)
+            output = translator.forward(en_sentences, ger_sentences, en_mask, ger_mask)
             loss_item = loss_function(output, ger_sentences)
             loss_item.backward()
             optim.step()
@@ -83,23 +83,19 @@ def train():
                     translator.eval()
                     total_loss = 0.
                     eval_it = 0.
-                    for (en_sentences_2, en_lengths_2), (ger_sentences_2, ger_lengths_2) in validloader:
+                    for (en_sentences, en_mask), (ger_sentences, ger_mask) in validloader:
 
                         if eval_it == 0:
-                            for sent in EN_TRAIN:
-                                print('\n' + sent + '\n')
-                                print(translator.predict(sent), '\n')
-
                             print('\n' + train_sentence + '\n')
                             print(translator.predict(train_sentence), '\n')
 
                             print(valid_sentence + '\n')
                             print(translator.predict(valid_sentence), '\n')
 
-                        en_sentences_2, ger_sentences_2 = en_sentences_2.to(DEVICE), ger_sentences_2.to(DEVICE)
-                        en_lengths_2, ger_lengths_2 = en_lengths_2.to(DEVICE), ger_lengths_2.to(DEVICE)
-                        output = translator.forward(en_sentences_2, ger_sentences_2, en_lengths_2, ger_lengths_2)
-                        loss_item = loss_function(output, ger_sentences_2)
+                        en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
+                        en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
+                        output = translator.forward(en_sentences, ger_sentences, en_mask, ger_mask)
+                        loss_item = loss_function(output, ger_sentences)
                         total_loss += loss_item.item()
                         eval_it += 1
                     total_loss = total_loss / eval_it
@@ -115,7 +111,7 @@ def train():
                         torch.save(checkpoint, CHECKPOINT_PATH)
                 translator.train()
             it += 1
-            #lr_schedule(it)
+            lr_schedule(it)
         epochs += 1
 
 

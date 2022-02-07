@@ -3,6 +3,5 @@
 checkpoints
 data
 .idea
+main.py
 translator/__pycache__
-translator/test.vocab
-translator/test.model
