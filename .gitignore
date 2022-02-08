@@ -3,5 +3,4 @@
 checkpoints
 data
 .idea
-main.py
 translator/__pycache__
