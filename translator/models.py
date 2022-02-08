@@ -55,7 +55,7 @@ class Transformer(nn.Module):
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()
         self.final_projection = nn.Linear(self.d_model, self.vocab_size, bias=False)
-        self.predict_softmax = nn.Softmax(dim=-1)
+        self.softmax = nn.Softmax(dim=-1)
 
     def _get_encoder(self):
         encoder = []
@@ -88,8 +88,8 @@ class Transformer(nn.Module):
         tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence) + [end_token])
         self.eval()
         while True:
-            output = self.predict_softmax(self.forward(tokenized_input, sequence))
-            prediction = torch.multinomial(output[0, -1, :], num_samples=1)
+            output = self.softmax(self.forward(tokenized_input, sequence))
+            prediction = torch.multinomial(output[0, -1, :], 1)
             #prediction = output[0, -1, :].topk(1)[1].squeeze(0)
             if prediction.item() == end_token:
                 break
