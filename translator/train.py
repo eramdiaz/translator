@@ -25,22 +25,18 @@ class Trainer:
             valid_samples: Tuple[Iterable[str], Iterable[str]],
             learning_rate: Union[float, object],
             batch_size: int,
-            criterion: torch.nn.Module = None,
-            optim: torch.nn.Module = None,
     ):
         self.model = model
         self.train_samples = train_samples
         self.valid_samples = valid_samples
-        self.train_set = ItemGetter(*self.train_samples, self.model.seq_len)
-        self.valid_set = ItemGetter(*self.valid_samples, self.model.seq_len)
+        self.train_set = ItemGetter(self.train_samples[0], self.train_samples[1], self.model.seq_len)
+        self.valid_set = ItemGetter(self.valid_samples[0], self.valid_samples[1], self.model.seq_len)
         self.train_loader = DataLoader(self.train_set, batch_size, True, num_workers=2)
         self.valid_loader = DataLoader(self.valid_set, batch_size, True, num_workers=2)
-        import pdb; pdb.set_trace()
         self.learning_rate = wrap_lr(learning_rate)
         self.batch_size = batch_size
-        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=3) if criterion is None else criterion
-        self.optim = torch.optim.Adam(self.model.parameters(),
-                                      lr=1e-7, betas=(0.9, 0.98), eps=1e-09) if optim is None else optim
+        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=3)
+        self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-9)
         self.min_valid_loss = 1e10
 
     def loss_function(self, predictions, targets):

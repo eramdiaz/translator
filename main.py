@@ -25,7 +25,7 @@ def main():
     ger_valid = pd.read_csv(f'{PROJECT_FOLDER}/data/ger_train.txt', delimiter='\n', header=None)[0].tolist()
     translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
     #lr_sch = WarmUpLr(WARMUP_STEPS, D_MODEL)
-    lr_sch = 0.01
+    lr_sch = 0.001
     trainer = Trainer(translator, (en_train, ger_train), (en_valid, ger_valid), lr_sch, BATCH_SIZE)
     trainer.train()
 
