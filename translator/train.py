@@ -4,7 +4,7 @@ import os
 import torch
 from time import time
 from uuid import uuid4
-from typing import Union, Tuple, Iterable, Any
+from typing import Union, Tuple, Iterable
 from torch.utils.data import DataLoader
 from translator.data import ItemGetter
 from translator.learning_rate import wrap_lr
@@ -67,7 +67,7 @@ class Trainer:
                       f'lr: {self.optim.param_groups[0]["lr"]}; '
                       f'iteration time: {round(end - start, 4)}')
 
-                if it % 50 == 0 and it > 0:
+                if it % 500 == 0 and it > 0:
                     self.valid_epoch()
                     self.model.train()
                 it += 1
@@ -82,13 +82,8 @@ class Trainer:
             for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_loader:
 
                 if eval_it == 0:
-                    import pdb; pdb.set_trace()
-                    for el in self.train_samples[0]:
-                        print(el)
-                        print(self.model.predict(el), '\n')
-
-                    train_sentence = self.train_samples[0][3]
-                    valid_sentence = self.valid_samples[0][4]
+                    train_sentence = self.train_samples[0][30]
+                    valid_sentence = self.valid_samples[0][40]
                     print('\n' + train_sentence + '\n')
                     print(self.model.predict(train_sentence), '\n')
 
