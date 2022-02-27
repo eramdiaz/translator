@@ -1,5 +1,5 @@
 torch
-numpy 
-pandas
+torchtext
+numpy
 sentencepiece
 typing

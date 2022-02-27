@@ -4,8 +4,8 @@ import os
 import torch
 from time import time
 from uuid import uuid4
-from typing import Union, Tuple, Iterable
-from torch.utils.data import DataLoader
+from typing import Union
+from torch.utils.data import Dataset, DataLoader
 from translator.data import ItemGetter
 from translator.learning_rate import wrap_lr
 
@@ -21,21 +21,19 @@ class Trainer:
     def __init__(
             self,
             model: torch.nn.Module,
-            train_samples: Tuple[Iterable[str], Iterable[str]],
-            valid_samples: Tuple[Iterable[str], Iterable[str]],
+            train_samples: Dataset,
+            valid_samples: Dataset,
             learning_rate: Union[float, object],
             batch_size: int,
     ):
         self.model = model
-        self.train_samples = train_samples
-        self.valid_samples = valid_samples
-        self.train_set = ItemGetter(self.train_samples[0], self.train_samples[1], self.model.seq_len)
-        self.valid_set = ItemGetter(self.valid_samples[0], self.valid_samples[1], self.model.seq_len)
-        self.train_loader = DataLoader(self.train_set, batch_size, True, num_workers=2)
-        self.valid_loader = DataLoader(self.valid_set, batch_size, True, num_workers=2)
+        self.train_dataset = ItemGetter(train_samples, self.model.seq_len)
+        self.valid_dataset = ItemGetter(valid_samples, self.model.seq_len)
+        self.train_dataloader = DataLoader(self.train_dataset, batch_size, True, num_workers=2)
+        self.valid_dataloader = DataLoader(self.valid_dataset, batch_size, True, num_workers=2)
         self.learning_rate = wrap_lr(learning_rate)
         self.batch_size = batch_size
-        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=3)
+        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-9)
         self.min_valid_loss = 1e10
 

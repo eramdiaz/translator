@@ -7,28 +7,6 @@ import torch
 MAX_LEN = 1000
 
 
-class Padding:
-    def __init__(self, seq_len, language):
-        self.seq_len = seq_len
-        assert language in ('english', 'german')
-        self.language = language
-
-    def __call__(self, x):
-        #start (1), end of sentence (2) and ignore (3) tokens are added
-        if self.language == 'english':
-            if len(x) < self.seq_len:
-                padded_seq = x + [2] + [3 for i in range(len(x) + 1, self.seq_len)]
-                return padded_seq, [len(x) + 1]
-            padded_seq = x[:self.seq_len - 1] + [2]
-            return padded_seq, [self.seq_len]
-        if self.language == 'german':
-            if len(x) < (self.seq_len - 1):
-                padded_seq = [1] + x + [2] + [3 for i in range(len(x) + 2, self.seq_len)]
-                return padded_seq, [len(x) + 2]
-            padded_seq = [1] + x[:self.seq_len - 2] + [2]
-            return padded_seq, [self.seq_len]
-
-
 class Embedding(torch.nn.Module):
     def __init__(self, emb_size, emb_dim):
         super().__init__()
