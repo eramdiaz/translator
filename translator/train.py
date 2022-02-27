@@ -36,7 +36,7 @@ class Trainer:
         self.learning_rate = wrap_lr(learning_rate)
         self.batch_size = batch_size
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
-        self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-9)
+        self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-8, betas=(0.9, 0.98), eps=1e-9)
         self.min_valid_loss = 1e10
         self.train_sentence = None
         self.valid_sentence = None
