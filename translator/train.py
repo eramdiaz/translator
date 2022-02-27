@@ -27,8 +27,10 @@ class Trainer:
             batch_size: int,
     ):
         self.model = model
-        self.train_dataset = ItemGetter(train_samples, self.model.seq_len)
-        self.valid_dataset = ItemGetter(valid_samples, self.model.seq_len)
+        self.train_samples = train_samples
+        self.valid_samples = valid_samples
+        self.train_dataset = ItemGetter(self.train_samples, self.model.seq_len)
+        self.valid_dataset = ItemGetter(self.valid_samples, self.model.seq_len)
         self.train_dataloader = DataLoader(self.train_dataset, batch_size, True, num_workers=2)
         self.valid_dataloader = DataLoader(self.valid_dataset, batch_size, True, num_workers=2)
         self.learning_rate = wrap_lr(learning_rate)
@@ -36,6 +38,8 @@ class Trainer:
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-3, betas=(0.9, 0.98), eps=1e-9)
         self.min_valid_loss = 1e10
+        self.train_sentence = None
+        self.valid_sentence = None
 
     def loss_function(self, predictions, targets):
         total_loss = 0.
@@ -47,11 +51,12 @@ class Trainer:
     def train(self):
         epochs = 0
         it = 0.
-        self.model.eval()
+        self.train_sentence = "And we're going to tell you some stories from the sea here in video."
+        self.valid_sentence = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         while True:
             print('Start epoch %d' % epochs)
             self.model.train()
-            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.train_loader:
+            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.train_dataloader:
                 start = time()
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
@@ -77,16 +82,14 @@ class Trainer:
             self.model.eval()
             total_loss = 0.
             eval_it = 0.
-            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_loader:
+            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_dataloader:
 
                 if eval_it == 0:
-                    train_sentence = self.train_samples[0][30]
-                    valid_sentence = self.valid_samples[0][40]
-                    print('\n' + train_sentence + '\n')
-                    print(self.model.predict(train_sentence), '\n')
+                    print('\n' + self.train_sentence + '\n')
+                    print(self.model.predict(self.train_sentence), '\n')
 
-                    print(valid_sentence + '\n')
-                    print(self.model.predict(valid_sentence), '\n')
+                    print(self.valid_sentence + '\n')
+                    print(self.model.predict(self.valid_sentence), '\n')
 
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)

@@ -86,15 +86,15 @@ class Transformer(nn.Module):
         return self.final_projection(outputs)
 
     def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
-        # TODO: add ' . ', ' ? ', ' ! ' like in train data if the sentence doesn't finish with them?
         sequence = torch.LongTensor([start_token])
         it = 0
-        tokenized_input = torch.LongTensor(tokenizer.encode_as_ids(sentence) + [end_token])
+        tokenized_input = tokenizer.encode(sentence, out_type=int, add_bos=False, add_eos=True)
+        tokenized_input = torch.LongTensor(tokenized_input)
         self.eval()
         while True:
             output = self.softmax(self.forward(tokenized_input, sequence))
-            prediction = torch.multinomial(output[0, -1, :], 1)
-            #prediction = output[0, -1, :].topk(1)[1].squeeze(0)
+            #prediction = torch.multinomial(output[0, -1, :], 1)
+            prediction = output[0, -1, :].topk(1)[1]
             if prediction.item() == end_token:
                 break
             sequence = torch.cat((sequence, prediction), -1)

@@ -24,7 +24,7 @@ def main():
     test_samples = to_map_style_dataset(test_iter)
     translator = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
     lr_sch = WarmUpLr(WARMUP_STEPS, D_MODEL)
-    #lr_sch = 9e-5
+    #lr_sch = 2e-4
     trainer = Trainer(translator, train_samples, ConcatDataset(valid_samples, test_samples),
                       lr_sch, BATCH_SIZE)
     trainer.train()
