@@ -4,6 +4,7 @@ import os
 import torch
 from time import time
 from uuid import uuid4
+from pathlib import Path
 from typing import Union
 from torch.utils.data import Dataset, DataLoader
 from translator.data import ItemGetter
@@ -11,10 +12,10 @@ from translator.learning_rate import wrap_lr
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-CHECKPOINTS_FOLDER = '/'.join(__file__.split('/')[:-2]) + '/checkpoints'
+CHECKPOINTS_FOLDER = Path(__file__).resolve().parent.parent / 'checkpoints'
 assert os.path.exists(CHECKPOINTS_FOLDER), \
     'Create a checkpoints folder in translator for saving the model.'
-CHECKPOINT_PATH = CHECKPOINTS_FOLDER + '/' + str(uuid4()) + '.pth'
+CHECKPOINT_PATH = CHECKPOINTS_FOLDER  / (str(uuid4()) + '.pth')
 
 
 class Trainer:

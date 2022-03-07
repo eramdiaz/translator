@@ -75,30 +75,35 @@ class Transformer(nn.Module):
                                        self.seq_len, self.d_ff))
         return nn.ModuleList(decoder)
 
-    def forward(self, inputs, outputs, i_mask=None, o_mask=None):
+    def encode(self, inputs, mask=None):
         inputs = self.dropout1(self.positional_encoding(self.embedding(inputs)))
         for module in self.encoder:
-            inputs = module(inputs, inputs, inputs, i_mask)
+            inputs = module(inputs, inputs, inputs, mask)
+        return inputs
+
+    def decode(self, inputs, outputs, i_mask=None, o_mask=None):
         outputs = self.dropout2(self.positional_encoding(self.embedding(outputs)))
         for module in self.decoder:
             outputs = module(outputs, outputs, outputs, inputs, inputs,
                              i_mask, o_mask)
         return self.final_projection(outputs)
 
-    def predict(self, sentence, tokenizer=tokenizer, start_token=1, end_token=2):
+    def forward(self, inputs, outputs, i_mask=None, o_mask=None):
+        inputs = self.encode(inputs, i_mask)
+        return self.decode(inputs, outputs, i_mask, o_mask)
+
+    def predict(self, sentence, tokenizer=tokenizer, max_len=None):
+        start_token, end_token = tokenizer.bos_id(), tokenizer.eos_id()
+        max_len = self.positional_encoding.max_len if max_len is None else max_len
         sequence = torch.LongTensor([start_token])
-        it = 0
-        tokenized_input = tokenizer.encode(sentence, out_type=int, add_bos=False, add_eos=True)
-        tokenized_input = torch.LongTensor(tokenized_input)
+        input_ = tokenizer.encode(sentence, out_type=int, add_bos=False, add_eos=True)
         self.eval()
-        while True:
-            output = self.softmax(self.forward(tokenized_input, sequence))
+        input_ = self.encode(torch.LongTensor(input_))
+        for _ in range(max_len):
+            output = self.softmax(self.decode(input_, sequence))
             #prediction = torch.multinomial(output[0, -1, :], 1)
             prediction = output[0, -1, :].topk(1)[1]
             if prediction.item() == end_token:
                 break
             sequence = torch.cat((sequence, prediction), -1)
-            it += 1
-            if it == self.positional_encoding.max_len:
-                break
         return tokenizer.decode(sequence[1:].tolist())
