@@ -1,17 +1,13 @@
 """Train our tokenizer"""
 
 import sentencepiece
-from pathlib import Path
 
-CORPUS_FILE = Path(__file__).resolve().parent.parent / 'data' / 'train_subset.txt'
-MODEL_PREFIX = 'tokenizer'
-VOCAB_SIZE = 37000
 
-if __name__ == '__main__':
+def train_tokenizer(corpus_file, model_prefix, vocab_size):
     sentencepiece.SentencePieceTrainer.Train(
-       f'--input={str(CORPUS_FILE)} '
-       f'--model_prefix={MODEL_PREFIX} '
-       f'--vocab_size={VOCAB_SIZE} '
+       f'--input={corpus_file} '
+       f'--model_prefix={model_prefix} '
+       f'--vocab_size={vocab_size} '
        f'--character_coverage={1.0} '
        '--control_symbols=<pad> '
        '--model_type=bpe '
