@@ -15,7 +15,7 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CHECKPOINTS_FOLDER = Path(__file__).resolve().parent.parent / 'checkpoints'
 assert os.path.exists(CHECKPOINTS_FOLDER), \
     'Create a checkpoints folder in translator for saving the model.'
-CHECKPOINT_PATH = CHECKPOINTS_FOLDER  / (str(uuid4()) + '.pth')
+CHECKPOINT_PATH = CHECKPOINTS_FOLDER / (str(uuid4()) + '.pth')
 
 
 class Trainer:
