@@ -62,7 +62,7 @@ class Trainer:
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
                 self.optim.zero_grad()
-                output = self.model.forward(en_sentences, ger_sentences, en_mask, ger_mask)
+                output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
                 loss = self.loss_function(output, ger_sentences)
                 loss.backward()
                 self.optim.step()
