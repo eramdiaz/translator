@@ -15,7 +15,6 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CHECKPOINTS_FOLDER = Path(__file__).resolve().parent.parent / 'checkpoints'
 assert os.path.exists(CHECKPOINTS_FOLDER), \
     'Create a checkpoints folder in translator for saving the model.'
-CHECKPOINT_PATH = CHECKPOINTS_FOLDER / (str(uuid4()) + '.pth')
 
 
 class Trainer:
@@ -26,6 +25,7 @@ class Trainer:
             valid_samples: Dataset,
             learning_rate: Union[float, object],
             batch_size: int,
+            experiment: Union[str, Path] = None
     ):
         self.model = model
         self.train_samples = train_samples
@@ -41,6 +41,11 @@ class Trainer:
         self.min_valid_loss = 1e10
         self.train_sentence = None
         self.valid_sentence = None
+        self.it = 0.
+        if experiment is not None:
+            self.experiment = experiment
+        else:
+            self.experiment = CHECKPOINTS_FOLDER / (str(uuid4()) + '.pth')
 
     def loss_function(self, predictions, targets):
         total_loss = 0.
@@ -51,32 +56,34 @@ class Trainer:
 
     def train(self):
         epochs = 0
-        it = 0.
         self.train_sentence = "And we're going to tell you some stories from the sea here in video."
         self.valid_sentence = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         while True:
             print('Start epoch %d' % epochs)
-            self.model.train()
-            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.train_dataloader:
-                start = time()
-                en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-                en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
-                self.optim.zero_grad()
-                output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
-                loss = self.loss_function(output, ger_sentences)
-                loss.backward()
-                self.optim.step()
-                end = time()
-                print(f'TRAIN iteration {it}; loss: {round(loss.item(), 4)}; '
-                      f'lr: {self.optim.param_groups[0]["lr"]}; '
-                      f'iteration time: {round(end - start, 4)}')
-
-                if it % 500 == 0 and it > 0:
-                    self.valid_epoch()
-                    self.model.train()
-                it += 1
-                self.learning_rate(it, self.optim.param_groups)
+            self.do_epoch()
             epochs += 1
+
+    def do_epoch(self):
+        self.model.train()
+        for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.train_dataloader:
+            start = time()
+            en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
+            en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
+            self.optim.zero_grad()
+            output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
+            loss = self.loss_function(output, ger_sentences)
+            loss.backward()
+            self.optim.step()
+            end = time()
+            print(f'TRAIN iteration {self.it}; loss: {round(loss.item(), 4)}; '
+                  f'lr: {self.optim.param_groups[0]["lr"]}; '
+                  f'iteration time: {round(end - start, 4)}')
+
+            if self.it % 500 == 0:
+                self.valid_epoch()
+                self.model.train()
+            self.it += 1
+            self.learning_rate(self.it, self.optim.param_groups)
 
     def valid_epoch(self):
         with torch.no_grad():
@@ -85,7 +92,7 @@ class Trainer:
             eval_it = 0.
             for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_dataloader:
 
-                if eval_it == 0:
+                if eval_it == 0 and self.train_sentence is not None:
                     print('\n' + self.train_sentence + '\n')
                     print(self.model.predict(self.train_sentence), '\n')
 
@@ -111,4 +118,4 @@ class Trainer:
             'd_model': self.model.d_model, 'd_k': self.model.d_k, 'd_v': self.model.d_v,
             'h': self.model.h, 'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict()
         }
-        torch.save(checkpoint, CHECKPOINT_PATH)
+        torch.save(checkpoint, self.experiment)
