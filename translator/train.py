@@ -3,8 +3,8 @@
 import os
 import torch
 from time import time
-from uuid import uuid4
 from pathlib import Path
+from datetime import datetime
 from typing import Union
 from torch.utils.data import Dataset, DataLoader
 from translator.data import ItemGetter
@@ -43,9 +43,9 @@ class Trainer:
         self.valid_sentence = None
         self.it = 0.
         if experiment is not None:
-            self.experiment = experiment
+            self.experiment = CHECKPOINTS_FOLDER / (experiment + '.pth')
         else:
-            self.experiment = CHECKPOINTS_FOLDER / (str(uuid4()) + '.pth')
+            self.experiment = CHECKPOINTS_FOLDER / (datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '.pth')
 
     def loss_function(self, predictions, targets):
         total_loss = 0.
