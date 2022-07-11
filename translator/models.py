@@ -59,6 +59,7 @@ class Transformer(nn.Module):
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()
         self.final_projection = nn.Linear(self.d_model, self.vocab_size, bias=False)
+        initialize_weight(self.final_projection)
         self.softmax = nn.Softmax(dim=-1)
 
     def _get_encoder(self):
