@@ -25,7 +25,8 @@ class Trainer:
             valid_samples: Dataset,
             learning_rate: Union[float, object],
             batch_size: int,
-            experiment: Union[str, Path] = None
+            experiment: Union[str, Path] = None,
+            validation_freq: int = 500,
     ):
         self.model = model
         self.train_samples = train_samples
@@ -42,10 +43,19 @@ class Trainer:
         self.train_sentence = None
         self.valid_sentence = None
         self.it = 0.
-        if experiment is not None:
-            self.experiment = CHECKPOINTS_FOLDER / (experiment + '.pth')
-        else:
-            self.experiment = CHECKPOINTS_FOLDER / (datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '.pth')
+        self.experiment = self._parse_experiment_path(experiment)
+        self.validation_freq = validation_freq
+
+    def _parse_experiment_path(self, experiment):
+        if experiment is None:
+            return CHECKPOINTS_FOLDER / (datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '.pt')
+        experiment = Path(experiment) if not isinstance(experiment, str) else experiment
+        name, ext = os.path.splitext(experiment)
+        if ext == '':
+            experiment = experiment.with_suffix('.pt')
+        if not os.path.isabs(experiment):
+            return CHECKPOINTS_FOLDER / experiment
+        return experiment
 
     def loss_function(self, predictions, targets):
         total_loss = 0.
@@ -58,6 +68,7 @@ class Trainer:
         epochs = 0
         self.train_sentence = "And we're going to tell you some stories from the sea here in video."
         self.valid_sentence = "When I was 11, I remember waking up one morning to the sound of joy in my house."
+        self.model.to(DEVICE)
         while True:
             print('Start epoch %d' % epochs)
             self.do_epoch()
@@ -79,7 +90,7 @@ class Trainer:
                   f'lr: {self.optim.param_groups[0]["lr"]}; '
                   f'iteration time: {round(end - start, 4)}')
 
-            if self.it % 500 == 0:
+            if self.it % self.validation_freq == 0:
                 self.valid_epoch()
                 self.model.train()
             self.it += 1

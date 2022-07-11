@@ -44,6 +44,7 @@ class MultiHeadAttention(torch.nn.Module):
         self.d_k = d_k
         self.d_v = d_v
         self.h = h
+        self.scaling_factor = np.sqrt(self.d_k)
         self.seq_len = seq_len
         self.masked = masked
         self.softmax = torch.nn.Softmax(dim=-1)
@@ -67,7 +68,7 @@ class MultiHeadAttention(torch.nn.Module):
         return torch.nn.ModuleList(projections)
 
     def compute_simple_attention(self, q, k, v, pad_mask_1=None, pad_mask_2=None):
-        w = torch.matmul(q, k.transpose(-2, -1)) / np.sqrt(self.d_k)
+        w = torch.matmul(q, k.transpose(-2, -1)) / self.scaling_factor
         if pad_mask_1 is not None:
             for i, pm1 in enumerate(pad_mask_1):
                 w[i, :, pm1:] = -1e10
