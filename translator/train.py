@@ -27,6 +27,7 @@ class Trainer:
             batch_size: int,
             experiment: Union[str, Path] = None,
             validation_freq: int = 500,
+            predict_during_training: bool = True
     ):
         self.model = model
         self.train_samples = train_samples
@@ -40,11 +41,12 @@ class Trainer:
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-8, betas=(0.9, 0.98), eps=1e-9)
         self.min_valid_loss = 1e10
-        self.train_sentence = None
-        self.valid_sentence = None
+        self._train_sample = "And we're going to tell you some stories from the sea here in video."
+        self._valid_sample = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         self.it = 0.
         self.experiment = self._parse_experiment_path(experiment)
         self.validation_freq = validation_freq
+        self.predict_during_training = predict_during_training
 
     def _parse_experiment_path(self, experiment):
         if experiment is None:
@@ -66,8 +68,6 @@ class Trainer:
 
     def train(self):
         epochs = 0
-        self.train_sentence = "And we're going to tell you some stories from the sea here in video."
-        self.valid_sentence = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         self.model.to(DEVICE)
         while True:
             print('Start epoch %d' % epochs)
@@ -103,12 +103,12 @@ class Trainer:
             eval_it = 0.
             for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_dataloader:
 
-                if eval_it == 0 and self.train_sentence is not None:
-                    print('\n' + self.train_sentence + '\n')
-                    print(self.model.predict(self.train_sentence), '\n')
+                if eval_it == 0 and self.predict_during_training:
+                    print('\n' + self._train_sample + '\n')
+                    print(self.model.predict(self._train_sample), '\n')
 
-                    print(self.valid_sentence + '\n')
-                    print(self.model.predict(self.valid_sentence), '\n')
+                    print(self._valid_sample + '\n')
+                    print(self.model.predict(self._valid_sample), '\n')
 
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)

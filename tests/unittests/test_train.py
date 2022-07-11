@@ -48,7 +48,8 @@ class TestTrainer:
         transformer = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
         lr_sch = WarmUpLr(WARMUP_STEPS, D_MODEL)
         request.cls.trainer = Trainer(transformer, mock_train, mock_valid,
-                                      lr_sch, BATCH_SIZE, experiment=tmp_path/'test.pt')
+                                      lr_sch, BATCH_SIZE, experiment=tmp_path/'test.pt',
+                                      predict_during_training=False)
 
     def test_do_epoch(self):
         self.trainer.do_epoch()
