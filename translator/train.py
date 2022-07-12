@@ -13,8 +13,8 @@ from translator.learning_rate import wrap_lr
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 CHECKPOINTS_FOLDER = Path(__file__).resolve().parent.parent / 'checkpoints'
-assert os.path.exists(CHECKPOINTS_FOLDER), \
-    'Create a checkpoints folder in translator for saving the model.'
+if not os.path.exists(CHECKPOINTS_FOLDER):
+    os.makedirs(CHECKPOINTS_FOLDER)
 
 
 class Trainer:
@@ -59,18 +59,12 @@ class Trainer:
             return CHECKPOINTS_FOLDER / experiment
         return experiment
 
-    def loss_function(self, predictions, targets):
-        total_loss = 0.
-        for pred, target in zip(predictions, targets):
-            loss_item = self.criterion(pred[:-1, :], target[1:])
-            total_loss += loss_item
-        return total_loss / predictions.shape[0]
-
     def train(self):
+        print('Starting training\n')
         epochs = 0
         self.model.to(DEVICE)
         while True:
-            print('Start epoch %d' % epochs)
+            print('Starting epoch %d\n' % epochs)
             self.do_epoch()
             epochs += 1
 
@@ -82,7 +76,9 @@ class Trainer:
             en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
             self.optim.zero_grad()
             output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
-            loss = self.loss_function(output, ger_sentences)
+            loss = self.criterion(
+                output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
+            )
             loss.backward()
             self.optim.step()
             end = time()
@@ -97,6 +93,7 @@ class Trainer:
             self.learning_rate(self.it, self.optim.param_groups)
 
     def valid_epoch(self):
+        print('Validating...\n')
         with torch.no_grad():
             self.model.eval()
             total_loss = 0.
@@ -113,7 +110,9 @@ class Trainer:
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
                 output = self.model.forward(en_sentences, ger_sentences, en_mask, ger_mask)
-                loss = self.loss_function(output, ger_sentences)
+                loss = self.criterion(
+                    output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
+                )
                 total_loss += loss.item()
                 eval_it += 1
             total_loss = total_loss / eval_it
