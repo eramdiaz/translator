@@ -6,11 +6,18 @@ from torch import nn
 
 
 class EncoderCell(nn.Module):
-    def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
+    def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff, do_weight_init=False):
         super().__init__()
-        self.attention_layer = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
+        self.d_model = d_model
+        self.d_k = d_k
+        self.d_v = d_v
+        self.h = h
+        self.seq_len = seq_len
+        self.d_ff = d_ff
+        self.do_weight_init = do_weight_init
+        self.attention_layer = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False, do_weight_init)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
-        self.feedforward = FeedForward(d_model, d_ff)
+        self.feedforward = FeedForward(d_model, d_ff, do_weight_init)
         self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout1 = nn.Dropout(p=0.1)
         self.dropout2 = nn.Dropout(p=0.1)
@@ -21,13 +28,20 @@ class EncoderCell(nn.Module):
 
 
 class DecoderCell(nn.Module):
-    def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff):
+    def __init__(self, d_model, d_k, d_v, h, seq_len, d_ff, do_weight_init=False):
         super().__init__()
-        self.self_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, True)
+        self.d_model = d_model
+        self.d_k = d_k
+        self.d_v = d_v
+        self.h = h
+        self.seq_len = seq_len
+        self.d_ff = d_ff
+        self.do_weight_init = do_weight_init
+        self.self_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, True, do_weight_init)
         self.layernorm1 = nn.LayerNorm(d_model, eps=1e-6)
-        self.enc_dec_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False)
+        self.enc_dec_attention = MultiHeadAttention(d_model, d_k, d_v, h, seq_len, False, do_weight_init)
         self.layernorm2 = nn.LayerNorm(d_model, eps=1e-6)
-        self.feedforward = FeedForward(d_model, d_ff)
+        self.feedforward = FeedForward(d_model, d_ff, do_weight_init)
         self.layernorm3 = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout1 = nn.Dropout(p=0.1)
         self.dropout2 = nn.Dropout(p=0.1)
@@ -42,7 +56,7 @@ class DecoderCell(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, n, vocab_size, seq_len, d_model, d_k, d_v, h, d_ff):
+    def __init__(self, n, vocab_size, seq_len, d_model, d_k, d_v, h, d_ff, do_weight_init=False):
         super().__init__()
         self.n = n
         self.vocab_size = vocab_size
@@ -52,28 +66,30 @@ class Transformer(nn.Module):
         self.d_v = d_v
         self.h = h
         self.d_ff = d_ff
-        self.embedding = Embedding(self.vocab_size, self.d_model)
+        self.do_weight_init = do_weight_init
+        self.embedding = Embedding(self.vocab_size, self.d_model, self.do_weight_init)
         self.positional_encoding = PositionalEncoding(self.d_model)
         self.dropout1 = nn.Dropout(p=0.1)
         self.dropout2 = nn.Dropout(p=0.1)
         self.encoder = self._get_encoder()
         self.decoder = self._get_decoder()
         self.final_projection = nn.Linear(self.d_model, self.vocab_size, bias=False)
-        initialize_weight(self.final_projection)
+        if self.do_weight_init:
+            initialize_weight(self.final_projection)
         self.softmax = nn.Softmax(dim=-1)
 
     def _get_encoder(self):
         encoder = []
         for _ in range(self.n):
             encoder.append(EncoderCell(self.d_model, self.d_k, self.d_v, self.h,
-                                       self.seq_len, self.d_ff))
+                                       self.seq_len, self.d_ff, self.do_weight_init))
         return nn.ModuleList(encoder)
 
     def _get_decoder(self):
         decoder = []
         for _ in range(self.n):
             decoder.append(DecoderCell(self.d_model, self.d_k, self.d_v, self.h,
-                                       self.seq_len, self.d_ff))
+                                       self.seq_len, self.d_ff, self.do_weight_init))
         return nn.ModuleList(decoder)
 
     def encode(self, inputs, mask=None):

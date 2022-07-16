@@ -18,10 +18,14 @@ def initialize_weight(x):
 
 
 class Embedding(nn.Module):
-    def __init__(self, emb_size, emb_dim):
+    def __init__(self, emb_size, emb_dim, do_weight_init=False):
         super().__init__()
         self.embedder = nn.Embedding(emb_size, emb_dim)
-        nn.init.normal_(self.embedder.weight, mean=0, std=emb_dim**-0.5)
+        self.emb_size = emb_size
+        self.emb_dim = emb_dim
+        self.do_weight_init = do_weight_init
+        if self.do_weight_init:
+            nn.init.normal_(self.embedder.weight, mean=0, std=emb_dim**-0.5)
         self.scale_factor = emb_dim ** 0.5
 
     def forward(self, x):
@@ -49,7 +53,8 @@ class PositionalEncoding(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, d_k, d_v, h, seq_len, masked=False, max_len=MAX_LEN):
+    def __init__(self, d_model, d_k, d_v, h, seq_len, masked=False,
+                 do_weight_init=False, max_len=MAX_LEN):
         super().__init__()
         self.d_model = d_model
         self.d_k = d_k
@@ -58,6 +63,7 @@ class MultiHeadAttention(nn.Module):
         self.scaling_factor = np.sqrt(self.d_k)
         self.seq_len = seq_len
         self.masked = masked
+        self.do_weight_init = do_weight_init
         self.softmax = nn.Softmax(dim=-1)
 
         if self.masked:
@@ -69,10 +75,11 @@ class MultiHeadAttention(nn.Module):
         self.values_projections = self._get_projections(self.d_v)
         self.final_projection = nn.Linear(self.h * self.d_v, self.d_model, bias=False)
 
-        initialize_weight(self.queries_projections)
-        initialize_weight(self.keys_projections)
-        initialize_weight(self.values_projections)
-        initialize_weight(self.final_projection)
+        if self.do_weight_init:
+            initialize_weight(self.queries_projections)
+            initialize_weight(self.keys_projections)
+            initialize_weight(self.values_projections)
+            initialize_weight(self.final_projection)
 
     def get_mask(self, n):
         return self.mask[:, :n, :n]
@@ -109,14 +116,16 @@ class MultiHeadAttention(nn.Module):
 
 
 class FeedForward(nn.Module):
-    def __init__(self, d_model, d_ff):
+    def __init__(self, d_model, d_ff, do_weight_init=False):
         super().__init__()
         self.d_model = d_model
         self.d_ff = d_ff
+        self.do_weight_init = do_weight_init
         self.linear_1 = nn.Linear(self.d_model, self.d_ff)
         self.linear_2 = nn.Linear(self.d_ff, self.d_model)
-        initialize_weight(self.linear_1)
-        initialize_weight(self.linear_2)
+        if self.do_weight_init:
+            initialize_weight(self.linear_1)
+            initialize_weight(self.linear_2)
         self.relu = nn.ReLU()
 
     def forward(self, x):

@@ -102,10 +102,10 @@ class Trainer:
 
                 if eval_it == 0 and self.predict_during_training:
                     print('\n' + self._train_sample + '\n')
-                    print(self.model.predict(self._train_sample), '\n')
+                    print(self.model.predict(self._train_sample, max_len=30), '\n')
 
                     print(self._valid_sample + '\n')
-                    print(self.model.predict(self._valid_sample), '\n')
+                    print(self.model.predict(self._valid_sample, max_len=30), '\n')
 
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
