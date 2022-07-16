@@ -105,5 +105,5 @@ class TestTransformer:
             eq_outputs.append(self.transformer(masked_inp, masked_out))
 
         for output, eq_output, mask in zip(outputs, eq_outputs, g_masks):
-            closeness = torch.isclose(output[:mask, :], eq_output, rtol=1e-7, atol=1e-6)
+            closeness = torch.isclose(output[:mask, :], eq_output, rtol=1e-7, atol=1e-5)
             assert (closeness == False).sum().item() == 0
