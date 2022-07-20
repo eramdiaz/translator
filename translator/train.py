@@ -117,18 +117,19 @@ class Trainer:
                     output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
                 )
                 total_loss += loss.item()
-                bleu = self.compute_bleu_score(encoded, ger_sentences)
+                bleu = self.compute_bleu_score(encoded, ger_sentences, en_mask)
                 total_bleu += bleu
                 eval_it += 1
             total_loss = total_loss / eval_it
-            total_bleu = bleu / eval_it
+            total_bleu = total_bleu / eval_it
             print(f'VALID iteration; valid_loss: {round(total_loss, 4)}; bleu score: {round(total_bleu, 4)}')
             if total_bleu > self.max_bleu_score:
                 self.max_bleu_score = total_bleu
                 self.save_model()
 
-    def compute_bleu_score(self, enc_output, targets):
-        candidates = self.model.predict(enc_output, already_encoded=True, max_len=self.model.seq_len)
+    def compute_bleu_score(self, enc_output, targets, i_mask):
+        candidates = self.model.predict(enc_output, i_mask=i_mask, already_encoded=True,
+                                        max_len=self.model.seq_len)
         candidates = [cand.split(' ') for cand in candidates]
         candidates = [[split for split in cand if split] for cand in candidates]
         references = self.train_dataset.tokenizer.decode(targets.to('cpu').tolist())

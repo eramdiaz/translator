@@ -109,7 +109,8 @@ class Transformer(nn.Module):
         inputs = self.encode(inputs, i_mask)
         return self.decode(inputs, outputs, i_mask, o_mask)
 
-    def predict(self, input_, already_encoded=False, tokenizer=tokenizer, max_len=None):
+    def predict(self, input_, i_mask=None, already_encoded=False, tokenizer=tokenizer,
+                max_len=None):
         start_token, end_token = tokenizer.bos_id(), tokenizer.eos_id()
         max_len = self.positional_encoding.max_len if max_len is None else max_len
         device = next(self.parameters()).device.type
@@ -120,7 +121,7 @@ class Transformer(nn.Module):
         prediction = torch.ones((len(input_), 1), dtype=torch.int64) * start_token
         prediction = prediction.to(device)
         for _ in range(max_len):
-            output = self.softmax(self.decode(input_, prediction))
+            output = self.softmax(self.decode(input_, prediction, i_mask))
             #pred = torch.multinomial(output[:, -1, :], 1)
             pred = output[:, -1, :].topk(1)[1]
             if len(pred) == 1:
@@ -128,7 +129,7 @@ class Transformer(nn.Module):
                     break
             prediction = torch.cat((prediction, pred), -1)
         prediction = prediction.to('cpu').tolist()
-        if len(pred) == 1:
+        if len(prediction) == 1:
             return tokenizer.decode(prediction)[0]
         for i, sent in enumerate(prediction):
             try:
