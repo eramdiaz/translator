@@ -109,20 +109,33 @@ class Transformer(nn.Module):
         inputs = self.encode(inputs, i_mask)
         return self.decode(inputs, outputs, i_mask, o_mask)
 
-    def predict(self, sentence, tokenizer=tokenizer, max_len=None):
+    def predict(self, input_, i_mask=None, already_encoded=False, tokenizer=tokenizer,
+                max_len=None):
         start_token, end_token = tokenizer.bos_id(), tokenizer.eos_id()
         max_len = self.positional_encoding.max_len if max_len is None else max_len
         device = next(self.parameters()).device.type
-        sequence = torch.LongTensor([start_token]).to(device)
-        input_ = tokenizer.encode(sentence, out_type=int, add_bos=False, add_eos=True)
         self.eval()
-        input_ = self.encode(torch.LongTensor(input_).to(device))
+        if not already_encoded:
+            input_ = tokenizer.encode(input_, out_type=int, add_bos=False, add_eos=True)
+            input_ = self.encode(torch.LongTensor(input_).to(device))
+        prediction = torch.ones((len(input_), 1), dtype=torch.int64) * start_token
+        prediction = prediction.to(device)
         for _ in range(max_len):
-            output = self.softmax(self.decode(input_, sequence))
-            #prediction = torch.multinomial(output[0, -1, :], 1)
-            prediction = output[0, -1, :].topk(1)[1]
-            if prediction.item() == end_token:
-                break
-            sequence = torch.cat((sequence, prediction), -1)
-        sequence = sequence.to('cpu')
-        return tokenizer.decode(sequence[1:].tolist())
+            output = self.softmax(self.decode(input_, prediction, i_mask))
+            #pred = torch.multinomial(output[:, -1, :], 1)
+            pred = output[:, -1, :].topk(1)[1]
+            if len(pred) == 1:
+                if pred.item() == end_token:
+                    break
+            prediction = torch.cat((prediction, pred), -1)
+        prediction = prediction.to('cpu').tolist()
+        if len(prediction) == 1:
+            return tokenizer.decode(prediction)[0]
+        for i, sent in enumerate(prediction):
+            try:
+                stop_index = sent.index(end_token)
+            except ValueError:
+                pass
+            else:
+                prediction[i] = sent[:stop_index]
+        return tokenizer.decode(prediction)

@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Union
 from torch.utils.data import Dataset, DataLoader
+from torchtext.data.metrics import bleu_score
 from translator.data import ItemGetter
 from translator.learning_rate import wrap_lr
 
@@ -40,7 +41,7 @@ class Trainer:
         self.batch_size = batch_size
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-8, betas=(0.9, 0.98), eps=1e-9)
-        self.min_valid_loss = 1e10
+        self.max_bleu_score = 0.
         self._train_sample = "And we're going to tell you some stories from the sea here in video."
         self._valid_sample = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         self.it = 0.
@@ -98,6 +99,7 @@ class Trainer:
             self.model.eval()
             total_loss = 0.
             eval_it = 0.
+            total_bleu = 0.
             for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_dataloader:
 
                 if eval_it == 0 and self.predict_during_training:
@@ -109,23 +111,37 @@ class Trainer:
 
                 en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
                 en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
-                output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
+                encoded = self.model.encode(en_sentences, en_mask)
+                output = self.model.decode(encoded, ger_sentences, en_mask, ger_mask)
                 loss = self.criterion(
                     output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
                 )
                 total_loss += loss.item()
+                bleu = self.compute_bleu_score(encoded, ger_sentences, en_mask)
+                total_bleu += bleu
                 eval_it += 1
             total_loss = total_loss / eval_it
-            print(f'VALID iteration; valid_loss: {round(total_loss, 4)};')
-            if total_loss < self.min_valid_loss:
-                self.min_valid_loss = total_loss
+            total_bleu = total_bleu / eval_it
+            print(f'VALID iteration; valid_loss: {round(total_loss, 4)}; bleu score: {round(total_bleu, 4)}')
+            if total_bleu > self.max_bleu_score:
+                self.max_bleu_score = total_bleu
                 self.save_model()
+
+    def compute_bleu_score(self, enc_output, targets, i_mask):
+        candidates = self.model.predict(enc_output, i_mask=i_mask, already_encoded=True,
+                                        max_len=self.model.seq_len)
+        candidates = [cand.split(' ') for cand in candidates]
+        candidates = [[split for split in cand if split] for cand in candidates]
+        references = self.train_dataset.tokenizer.decode(targets.to('cpu').tolist())
+        references = [[ref.split(' ')] for ref in references]
+        return bleu_score(candidates, references, max_n=2, weights=[0.5, 0.5])
 
     def save_model(self):
         print('Saving...')
         checkpoint = {
             'n': self.model.n, 'vocab_size': self.model.vocab_size, 'seq_len': self.model.seq_len,
             'd_model': self.model.d_model, 'd_k': self.model.d_k, 'd_v': self.model.d_v,
-            'h': self.model.h, 'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict()
+            'h': self.model.h, 'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict(),
+            'bleu score': self.max_bleu_score
         }
         torch.save(checkpoint, self.experiment)
