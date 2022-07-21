@@ -71,14 +71,14 @@ class Trainer:
 
     def do_epoch(self):
         self.model.train()
-        for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.train_dataloader:
+        for en_sentences, de_sentences, en_mask, deen_mask, de_mask in self.train_dataloader:
             start = time()
-            en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-            en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
+            en_sentences, de_sentences = en_sentences.to(DEVICE), de_sentences.to(DEVICE)
+            en_mask, deen_mask, de_mask = en_mask.to(DEVICE), deen_mask.to(DEVICE), de_mask.to(DEVICE)
             self.optim.zero_grad()
-            output = self.model(en_sentences, ger_sentences, en_mask, ger_mask)
+            output = self.model(en_sentences, de_sentences, en_mask, deen_mask, de_mask)
             loss = self.criterion(
-                output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
+                output[:, :-1, :].reshape(-1, output.shape[-1]), de_sentences[:, 1:].reshape(-1)
             )
             loss.backward()
             self.optim.step()
@@ -100,7 +100,7 @@ class Trainer:
             total_loss = 0.
             eval_it = 0.
             total_bleu = 0.
-            for (en_sentences, en_mask), (ger_sentences, ger_mask) in self.valid_dataloader:
+            for en_sentences, de_sentences, en_mask, deen_mask, de_mask in self.valid_dataloader:
 
                 if eval_it == 0 and self.predict_during_training:
                     print('\n' + self._train_sample + '\n')
@@ -109,15 +109,15 @@ class Trainer:
                     print(self._valid_sample + '\n')
                     print(self.model.predict(self._valid_sample, max_len=30), '\n')
 
-                en_sentences, ger_sentences = en_sentences.to(DEVICE), ger_sentences.to(DEVICE)
-                en_mask, ger_mask = en_mask.to(DEVICE), ger_mask.to(DEVICE)
+                en_sentences, de_sentences = en_sentences.to(DEVICE), de_sentences.to(DEVICE)
+                en_mask, deen_mask, de_mask = en_mask.to(DEVICE), deen_mask.to(DEVICE), de_mask.to(DEVICE)
                 encoded = self.model.encode(en_sentences, en_mask)
-                output = self.model.decode(encoded, ger_sentences, en_mask, ger_mask)
+                output = self.model.decode(encoded, de_sentences, deen_mask, de_mask)
                 loss = self.criterion(
-                    output[:, :-1, :].reshape(-1, output.shape[-1]), ger_sentences[:, 1:].reshape(-1)
+                    output[:, :-1, :].reshape(-1, output.shape[-1]), de_sentences[:, 1:].reshape(-1)
                 )
                 total_loss += loss.item()
-                bleu = self.compute_bleu_score(encoded, ger_sentences, en_mask)
+                bleu = self.compute_bleu_score(encoded, de_sentences, deen_mask[:, :1,:])
                 total_bleu += bleu
                 eval_it += 1
             total_loss = total_loss / eval_it
@@ -127,8 +127,8 @@ class Trainer:
                 self.max_bleu_score = total_bleu
                 self.save_model()
 
-    def compute_bleu_score(self, enc_output, targets, i_mask):
-        candidates = self.model.predict(enc_output, i_mask=i_mask, already_encoded=True,
+    def compute_bleu_score(self, enc_output, targets, mask):
+        candidates = self.model.predict(enc_output, mask=mask, already_encoded=True,
                                         max_len=self.model.seq_len)
         candidates = [cand.split(' ') for cand in candidates]
         candidates = [[split for split in cand if split] for cand in candidates]

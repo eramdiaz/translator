@@ -90,28 +90,24 @@ class MultiHeadAttention(nn.Module):
             projections.append(nn.Linear(self.d_model, d_f, bias=False))
         return nn.ModuleList(projections)
 
-    def compute_simple_attention(self, q, k, v, pad_mask_1=None, pad_mask_2=None):
+    def compute_simple_attention(self, q, k, v, pad_mask=None):
         w = torch.matmul(q, k.transpose(-2, -1)) / self.scaling_factor
-        if pad_mask_1 is not None:
-            for i, pm1 in enumerate(pad_mask_1):
-                w[i, :, pm1:] = -1e10
-        if pad_mask_2 is not None:
-            for i, pm2 in enumerate(pad_mask_2):
-                w[i, pm2:, :] = -1e10
+        if pad_mask is not None:
+            w.masked_fill_(pad_mask, -1e10)
         if self.masked:
             mask = self.get_mask(w.shape[-2])
             w = w.tril() + mask.triu(1)
         w = self.softmax(w)
         return torch.matmul(w, v)
 
-    def forward(self, q, k, v, pad_mask_1=None, pad_mask_2=None):
+    def forward(self, q, k, v, pad_mask=None):
         heads = []
         for i in range(self.h):
             heads.append(self.compute_simple_attention(
                 self.queries_projections[i](q),
                 self.keys_projections[i](k),
                 self.values_projections[i](v),
-                pad_mask_1, pad_mask_2))
+                pad_mask))
         return self.final_projection(torch.cat(heads, dim=-1))
 
 
