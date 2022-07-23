@@ -1,16 +1,31 @@
 """Data utilities for the transformer"""
 
+from pathlib import Path
+from sentencepiece import SentencePieceProcessor
+from typing import Union, Iterable
 from torch import LongTensor, ones, bool
 from torch.utils.data import Dataset
-from translator.tokenizer import tokenizer
+from translator.tokenizer import load_tokenizer
 
 
 class ItemGetter(Dataset):
-    def __init__(self, data, seq_len):
+    def __init__(self, data: Iterable, seq_len: int,
+                 tokenizer: Union[str, Path, SentencePieceProcessor]):
         super().__init__()
         self.data = data
         self.seq_len = seq_len
-        self.tokenizer = tokenizer
+        self.tokenizer = self._get_tokenizer(tokenizer)
+
+    @staticmethod
+    def _get_tokenizer(tokenizer):
+        if isinstance(tokenizer, SentencePieceProcessor):
+            return tokenizer
+        elif isinstance(tokenizer, str) or isinstance(tokenizer, Path):
+            return load_tokenizer(tokenizer)
+        else:
+            raise ValueError('tokenizer argument must be a pathlib.Path or a string object '
+                             'representing the path of the tokenizer to load or a '
+                             'sentencepiece.SentencePieceProcessor object.')
 
     def pad_sequence(self, seq):
         if len(seq) < self.seq_len:

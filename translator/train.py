@@ -33,13 +33,13 @@ class Trainer:
         self.model = model
         self.train_samples = train_samples
         self.valid_samples = valid_samples
-        self.train_dataset = ItemGetter(self.train_samples, self.model.seq_len)
-        self.valid_dataset = ItemGetter(self.valid_samples, self.model.seq_len)
+        self.train_dataset = ItemGetter(self.train_samples, self.model.seq_len, self.model.tokenizer)
+        self.valid_dataset = ItemGetter(self.valid_samples, self.model.seq_len, self.model.tokenizer)
         self.train_dataloader = DataLoader(self.train_dataset, batch_size, True, num_workers=2)
         self.valid_dataloader = DataLoader(self.valid_dataset, batch_size, True, num_workers=2)
         self.learning_rate = wrap_lr(learning_rate)
         self.batch_size = batch_size
-        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.train_dataset.tokenizer.pad_id())
+        self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.model.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-8, betas=(0.9, 0.98), eps=1e-9)
         self.max_bleu_score = 0.
         self._train_sample = "And we're going to tell you some stories from the sea here in video."
@@ -51,13 +51,12 @@ class Trainer:
 
     def _parse_experiment_path(self, experiment):
         if experiment is None:
-            return CHECKPOINTS_FOLDER / (datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '.pt')
-        experiment = Path(experiment) if not isinstance(experiment, str) else experiment
-        name, ext = os.path.splitext(experiment)
-        if ext == '':
-            experiment = experiment.with_suffix('.pt')
+            experiment = CHECKPOINTS_FOLDER / datetime.now().strftime("%d-%m-%Y_%H:%M:%S")
+        else:
+            experiment = Path(experiment) if isinstance(experiment, str) else experiment
         if not os.path.isabs(experiment):
-            return CHECKPOINTS_FOLDER / experiment
+            experiment = CHECKPOINTS_FOLDER / experiment
+        assert not os.path.exists(CHECKPOINTS_FOLDER), 'This experiment already exists. Please choose another name.'
         return experiment
 
     def train(self):
@@ -132,16 +131,21 @@ class Trainer:
                                         max_len=self.model.seq_len)
         candidates = [cand.split(' ') for cand in candidates]
         candidates = [[split for split in cand if split] for cand in candidates]
-        references = self.train_dataset.tokenizer.decode(targets.to('cpu').tolist())
+        references = self.model.tokenizer.decode(targets.to('cpu').tolist())
         references = [[ref.split(' ')] for ref in references]
         return bleu_score(candidates, references, max_n=2, weights=[0.5, 0.5])
 
     def save_model(self):
         print('Saving...')
+        if not os.path.exists(self.experiment):
+            os.makedirs(self.experiment)
+        if not os.path.exists(self.experiment/'tokenizer'):
+            with open(self.experiment/'tokenizer', 'w') as f:
+                f.write(self.tokenizer.name)
         checkpoint = {
             'n': self.model.n, 'vocab_size': self.model.vocab_size, 'seq_len': self.model.seq_len,
             'd_model': self.model.d_model, 'd_k': self.model.d_k, 'd_v': self.model.d_v,
             'h': self.model.h, 'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict(),
             'bleu score': self.max_bleu_score
         }
-        torch.save(checkpoint, self.experiment)
+        torch.save(checkpoint, self.experiment / 'model.pt')
