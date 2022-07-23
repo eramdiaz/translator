@@ -65,7 +65,7 @@ class Transformer(nn.Module):
                  d_v: int, h: int, d_ff: int, do_weight_init: bool = False):
         super().__init__()
         self.n = n
-        self.tokenizer = self.get_tokenizer(tokenizer)
+        self.tokenizer = self._get_tokenizer(tokenizer)
         self.seq_len = seq_len
         self.d_model = d_model
         self.d_k = d_k

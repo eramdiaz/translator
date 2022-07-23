@@ -56,7 +56,7 @@ class Trainer:
             experiment = Path(experiment) if isinstance(experiment, str) else experiment
         if not os.path.isabs(experiment):
             experiment = CHECKPOINTS_FOLDER / experiment
-        assert not os.path.exists(CHECKPOINTS_FOLDER), 'This experiment already exists. Please choose another name.'
+        assert not os.path.exists(experiment), 'This experiment already exists. Please choose another name.'
         return experiment
 
     def train(self):
