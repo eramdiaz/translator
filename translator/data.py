@@ -1,7 +1,7 @@
 """Data utilities for the transformer"""
 
+from torch import LongTensor, ones, bool
 from torch.utils.data import Dataset
-from torch import LongTensor
 from translator.tokenizer import tokenizer
 
 
@@ -11,25 +11,30 @@ class ItemGetter(Dataset):
         self.data = data
         self.seq_len = seq_len
         self.tokenizer = tokenizer
-        self.to_tensor = lambda x: LongTensor(x)
 
     def pad_sequence(self, seq):
         if len(seq) < self.seq_len:
-            return seq + [self.tokenizer.pad_id() for _ in range(len(seq), self.seq_len)], [len(seq)]
-        return seq[:self.seq_len - 1] + [self.tokenizer.eos_id()], [self.seq_len]
+            return seq + [self.tokenizer.pad_id() for _ in range(len(seq), self.seq_len)]
+        return seq[:self.seq_len - 1] + [self.tokenizer.eos_id()]
+
+    def get_mask(self, hor, ver):
+        mask = ones(self.seq_len, self.seq_len, dtype=bool)
+        mask[:hor, :ver] = 0
+        return mask
 
     def __getitem__(self, item):
-        en_sentence, ger_sentence = self.data[item]
-
+        en_sentence, de_sentence = self.data[item]
         en_sentence = self.tokenizer.encode(en_sentence, out_type=int, add_bos=False, add_eos=True)
-        en_sentence, en_length = self.pad_sequence(en_sentence)
-        en_sentence, en_length = self.to_tensor(en_sentence), self.to_tensor(en_length)
+        de_sentence = self.tokenizer.encode(de_sentence, out_type=int, add_bos=True, add_eos=True)
 
-        ger_sentence = self.tokenizer.encode(ger_sentence, out_type=int, add_bos=True, add_eos=True)
-        ger_sentence, ger_length = self.pad_sequence(ger_sentence)
-        ger_sentence, ger_length = self.to_tensor(ger_sentence), self.to_tensor(ger_length)
+        en_mask = self.get_mask(len(en_sentence), len(en_sentence))
+        de_mask = self.get_mask(len(de_sentence), len(de_sentence))
+        deen_mask = self.get_mask(len(de_sentence), len(en_sentence))
 
-        return (en_sentence, en_length),  (ger_sentence, ger_length)
+        en_sentence, de_sentence = self.pad_sequence(en_sentence), self.pad_sequence(de_sentence)
+        en_sentence, de_sentence = LongTensor(en_sentence), LongTensor(de_sentence)
+
+        return en_sentence, de_sentence, en_mask, deen_mask, de_mask
 
     def __len__(self):
         return len(self.data)

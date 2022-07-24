@@ -23,7 +23,7 @@ class EncoderCell(nn.Module):
         self.dropout2 = nn.Dropout(p=0.1)
 
     def forward(self, q, k, v, mask=None):
-        x = self.layernorm1(self.dropout1(self.attention_layer(q, k, v, mask, mask)) + q)
+        x = self.layernorm1(self.dropout1(self.attention_layer(q, k, v, mask)) + q)
         return self.layernorm2(self.dropout2(self.feedforward(x)) + x)
 
 
@@ -47,11 +47,11 @@ class DecoderCell(nn.Module):
         self.dropout2 = nn.Dropout(p=0.1)
         self.dropout3 = nn.Dropout(p=0.1)
 
-    def forward(self, q, dec_k, dec_v, enc_k, enc_v, i_mask=None, o_mask=None):
+    def forward(self, q, dec_k, dec_v, enc_k, enc_v, ed_mask=None, d_mask=None):
         x = self.layernorm1(self.dropout1(
-            self.self_attention(q, dec_k, dec_v, o_mask, o_mask)) + q)
+            self.self_attention(q, dec_k, dec_v, d_mask)) + q)
         x = self.layernorm2(self.dropout2(
-            self.enc_dec_attention(x, enc_k, enc_v, i_mask, o_mask)) + x)
+            self.enc_dec_attention(x, enc_k, enc_v, ed_mask)) + x)
         return self.layernorm3(self.dropout3(self.feedforward(x)) + x)
 
 
@@ -98,18 +98,18 @@ class Transformer(nn.Module):
             inputs = module(inputs, inputs, inputs, mask)
         return inputs
 
-    def decode(self, inputs, outputs, i_mask=None, o_mask=None):
+    def decode(self, inputs, outputs, ed_mask=None, d_mask=None):
         outputs = self.dropout2(self.positional_encoding(self.embedding(outputs)))
         for module in self.decoder:
             outputs = module(outputs, outputs, outputs, inputs, inputs,
-                             i_mask, o_mask)
+                             ed_mask, d_mask)
         return self.final_projection(outputs)
 
-    def forward(self, inputs, outputs, i_mask=None, o_mask=None):
-        inputs = self.encode(inputs, i_mask)
-        return self.decode(inputs, outputs, i_mask, o_mask)
+    def forward(self, inputs, outputs, e_mask=None, ed_mask = None, d_mask=None):
+        inputs = self.encode(inputs, e_mask)
+        return self.decode(inputs, outputs, ed_mask, d_mask)
 
-    def predict(self, input_, i_mask=None, already_encoded=False, tokenizer=tokenizer,
+    def predict(self, input_, mask=None, already_encoded=False, tokenizer=tokenizer,
                 max_len=None):
         start_token, end_token = tokenizer.bos_id(), tokenizer.eos_id()
         max_len = self.positional_encoding.max_len if max_len is None else max_len
@@ -121,7 +121,7 @@ class Transformer(nn.Module):
         prediction = torch.ones((len(input_), 1), dtype=torch.int64) * start_token
         prediction = prediction.to(device)
         for _ in range(max_len):
-            output = self.softmax(self.decode(input_, prediction, i_mask))
+            output = self.softmax(self.decode(input_, prediction, mask))
             #pred = torch.multinomial(output[:, -1, :], 1)
             pred = output[:, -1, :].topk(1)[1]
             if len(pred) == 1:

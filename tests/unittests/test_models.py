@@ -33,6 +33,21 @@ def sent_2():
     return torch.load('tests/material/int_4_16_2.pt')
 
 
+@pytest.fixture
+def enc_mask():
+    return torch.load('tests/material/encmask_4_16_16.pt')
+
+
+@pytest.fixture
+def encdec_mask():
+    return torch.load('tests/material/encdecmask_4_16_16.pt')
+
+
+@pytest.fixture
+def dec_mask():
+    return torch.load('tests/material/decmask_4_16_16.pt')
+
+
 class TestEncoderCell:
     @pytest.fixture(autouse=True, scope='class')
     def init(self, request):
@@ -42,18 +57,18 @@ class TestEncoderCell:
         assert self.encoder_cell(input_1, input_1, input_1).shape \
                == torch.Size((4, 16, 64))
 
-    def test_mask(self, input_1):
+    def test_mask(self, input_1, enc_mask):
         self.encoder_cell.eval()
-        masks = torch.LongTensor([8, 4, 16, 12])
-        outputs = self.encoder_cell(input_1, input_1, input_1, masks)
+        outputs = self.encoder_cell(input_1, input_1, input_1, enc_mask['mask'])
 
         eq_outputs = []
-        for inp, mask in zip(input_1, masks):
-            masked_inp = inp[:mask.item()]
+        for inp, mask_len in zip(input_1, enc_mask['enc_lengths']):
+            masked_inp = inp[:mask_len.item()]
             eq_outputs.append(self.encoder_cell(masked_inp, masked_inp, masked_inp))
 
-        for output, mask, eq_output in zip(outputs, masks, eq_outputs):
-            closeness = torch.isclose(output[:mask, :], eq_output, rtol=1e-7, atol=1e-6)
+        for output, mask_len, eq_output in zip(outputs, enc_mask['enc_lengths'], eq_outputs):
+            closeness = torch.isclose(output[:mask_len.item(), :], eq_output,
+                                      rtol=1e-7, atol=1e-6)
             assert (closeness == False).sum().item() == 0
 
 
@@ -66,21 +81,20 @@ class TestDecoderCell:
         assert self.decoder_cell(input_2, input_2, input_2, input_1, input_1).shape \
                == torch.Size((4, 16, 64))
 
-    def test_mask(self, input_1, input_2):
+    def test_mask(self, input_1, input_2, encdec_mask, dec_mask):
         self.decoder_cell.eval()
-        e_masks = torch.LongTensor([8, 4, 16, 12])
-        g_masks = torch.LongTensor([9, 7, 10, 5])
-        outputs = self.decoder_cell(input_2, input_2, input_2, input_1,
-                                            input_1, e_masks, g_masks)
+        outputs = self.decoder_cell(input_2, input_2, input_2, input_1, input_1,
+                                    encdec_mask['mask'], dec_mask['mask'])
 
         eq_outputs = []
-        for inp, out, e_mask, g_mask in zip(input_1, input_2, e_masks, g_masks):
-            masked_inp = inp[:e_mask, :]
-            masked_out = out[:g_mask, :]
+        for inp, out, emask_len, dmask_len in zip(input_1, input_2, encdec_mask['enc_lengths'],
+                                                  dec_mask['dec_lengths']):
+            masked_inp = inp[:emask_len.item(), :]
+            masked_out = out[:dmask_len.item(), :]
             eq_outputs.append(self.decoder_cell(masked_out, masked_out, masked_out,
                                                         masked_inp, masked_inp))
-        for output, eq_output, mask in zip(outputs, eq_outputs, g_masks):
-            closeness = torch.isclose(output[:mask, :], eq_output, rtol=1e-7, atol=1e-6)
+        for output, eq_output, mask in zip(outputs, eq_outputs, dec_mask['dec_lengths']):
+            closeness = torch.isclose(output[:mask.item(), :], eq_output, rtol=1e-7, atol=1e-6)
             assert (closeness == False).sum().item() == 0
 
 
@@ -92,18 +106,18 @@ class TestTransformer:
     def test_forward(self, sent_1, sent_2):
         assert self.transformer(sent_1, sent_2).shape == torch.Size((4, 16, 128))
 
-    def test_mask(self, sent_1, sent_2):
+    def test_mask(self, sent_1, sent_2, enc_mask, encdec_mask, dec_mask):
         self.transformer.eval()
-        e_masks = torch.LongTensor([8, 4, 16, 12])
-        g_masks = torch.LongTensor([9, 7, 10, 5])
-        outputs = self.transformer(sent_1, sent_2, e_masks, g_masks)
+        outputs = self.transformer(sent_1, sent_2, enc_mask['mask'],
+                                   encdec_mask['mask'], dec_mask['mask'])
 
         eq_outputs = []
-        for inp, out, e_mask, g_mask in zip(sent_1, sent_2, e_masks, g_masks):
-            masked_inp = inp[:e_mask]
-            masked_out = out[:g_mask]
+        for inp, out, e_mask, g_mask in zip(sent_1, sent_2, enc_mask['enc_lengths'],
+                                            dec_mask['dec_lengths']):
+            masked_inp = inp[:e_mask.item()]
+            masked_out = out[:g_mask.item()]
             eq_outputs.append(self.transformer(masked_inp, masked_out))
 
-        for output, eq_output, mask in zip(outputs, eq_outputs, g_masks):
-            closeness = torch.isclose(output[:mask, :], eq_output, rtol=1e-7, atol=1e-5)
+        for output, eq_output, mask in zip(outputs, eq_outputs, dec_mask['dec_lengths']):
+            closeness = torch.isclose(output[:mask.item(), :], eq_output, rtol=1e-7, atol=1e-5)
             assert (closeness == False).sum().item() == 0
