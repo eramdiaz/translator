@@ -26,7 +26,7 @@ class Trainer:
             valid_samples: Dataset,
             learning_rate: Union[float, object],
             batch_size: int,
-            experiment: Union[str, Path] = None,
+            experiment: Union[str, Path, None] = None,
             validation_freq: int = 500,
             predict_during_training: bool = True
     ):

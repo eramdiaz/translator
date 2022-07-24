@@ -7,6 +7,7 @@ from pathlib import Path
 
 
 def load_tokenizer(path: Union[str, Path]):
+    print('Loading tokenizer...')
     tokenizer = sentencepiece.SentencePieceProcessor()
     tokenizer.Load(str(path))
     tokenizer.name = str(path)
