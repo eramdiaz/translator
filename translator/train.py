@@ -141,11 +141,10 @@ class Trainer:
             os.makedirs(self.experiment)
         if not os.path.exists(self.experiment/'tokenizer'):
             with open(self.experiment/'tokenizer', 'w') as f:
-                f.write(self.tokenizer.name)
+                f.write(self.model.tokenizer.name)
         checkpoint = {
-            'n': self.model.n, 'vocab_size': self.model.vocab_size, 'seq_len': self.model.seq_len,
-            'd_model': self.model.d_model, 'd_k': self.model.d_k, 'd_v': self.model.d_v,
-            'h': self.model.h, 'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict(),
-            'bleu score': self.max_bleu_score
+            'n': self.model.n, 'seq_len': self.model.seq_len, 'd_model': self.model.d_model,
+            'd_k': self.model.d_k, 'd_v': self.model.d_v, 'h': self.model.h, 'd_ff': self.model.d_ff,
+            'state_dict': self.model.state_dict(), 'bleu_score': self.max_bleu_score
         }
         torch.save(checkpoint, self.experiment / 'model.pt')

@@ -19,7 +19,8 @@ def load_model(path: Union[str, Path]):
     with open(f'{path}/tokenizer', 'r') as f:
         tokenizer_name = f.read()
     checkpoint = load(f'{path}/model.pt')
-    params = {k: v for k, v in checkpoint.items() if k != 'state_dict'}
+    print(f'Load model with a bleu score of {round(checkpoint["bleu_score"], 4)}')
+    params = {k: v for k, v in checkpoint.items() if k != 'state_dict' and k != 'bleu_score'}
     model = Transformer(**params, tokenizer=tokenizer_name)
     model.load_state_dict(checkpoint['state_dict'])
     return model
