@@ -1,4 +1,4 @@
 pytest
 pytest-cov
 pickle
-torch
+torch == 1.10.2

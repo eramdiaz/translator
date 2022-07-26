@@ -1,12 +1,11 @@
 "Tools for the transformer. "
 
 import os
+import pickle
 from typing import Union, Tuple
 from pathlib import Path
 from torch import load
-from torch.utils.data import Dataset, ConcatDataset
-from torchtext.datasets import IWSLT2016
-from torchtext.data.functional import to_map_style_dataset
+from torch.utils.data import Dataset
 from translator.models import Transformer
 from translator.train import Trainer
 from translator.learning_rate import WarmUpLr
@@ -19,8 +18,7 @@ def load_model(path: Union[str, Path]):
     with open(f'{path}/tokenizer', 'r') as f:
         tokenizer_name = f.read()
     checkpoint = load(f'{path}/model.pt')
-    print(f'Load model with a bleu score of {round(checkpoint["bleu_score"], 4)}')
-    params = {k: v for k, v in checkpoint.items() if k != 'state_dict' and k != 'bleu_score'}
+    params = {k: v for k, v in checkpoint.items() if k != 'state_dict'}
     model = Transformer(**params, tokenizer=tokenizer_name)
     model.load_state_dict(checkpoint['state_dict'])
     return model
@@ -42,11 +40,10 @@ def get_standard_trainer(
     if model is None:
         model = get_standard_model()
     if data is None:
-        train_iter, valid_iter, test_iter = IWSLT2016(language_pair=('en', 'de'))
-        train_samples = to_map_style_dataset(train_iter)
-        valid_samples = to_map_style_dataset(valid_iter)
-        test_samples = to_map_style_dataset(test_iter)
-        valid_samples = ConcatDataset([valid_samples, test_samples])
+        with open('data/IWSLT2016/train.pkl', 'rb') as f:
+            train_samples = pickle.load(f)
+        with open('data/IWSLT2016/valid.pkl', 'rb') as f:
+            valid_samples = pickle.load(f)
     else:
         train_samples, valid_samples = data
     if learning_rate is None:

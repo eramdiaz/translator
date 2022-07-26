@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Union
-from sentencepiece import SentencePieceProcessor
 from translator.blocks import *
 from translator.tokenizer import load_tokenizer
 from torch import nn
