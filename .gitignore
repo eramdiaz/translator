@@ -1,7 +1,6 @@
 .venv
 .git
 checkpoints
-data
 .idea
 translator/__pycache__
 tests/unittests/__pycache__/

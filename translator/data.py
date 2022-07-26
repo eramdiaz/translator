@@ -1,5 +1,6 @@
 """Data utilities for the transformer"""
 
+from random import random
 from pathlib import Path
 from sentencepiece import SentencePieceProcessor
 from typing import Union, Iterable
@@ -10,11 +11,13 @@ from translator.tokenizer import load_tokenizer
 
 class ItemGetter(Dataset):
     def __init__(self, data: Iterable, seq_len: int,
-                 tokenizer: Union[str, Path, SentencePieceProcessor]):
+                 tokenizer: Union[str, Path, SentencePieceProcessor],
+                 prob_remove_punc: float = 0.8):
         super().__init__()
         self.data = data
         self.seq_len = seq_len
         self.tokenizer = self._get_tokenizer(tokenizer)
+        self.prob_remove_punct = prob_remove_punc
 
     @staticmethod
     def _get_tokenizer(tokenizer):
@@ -39,6 +42,13 @@ class ItemGetter(Dataset):
 
     def __getitem__(self, item):
         en_sentence, de_sentence = self.data[item]
+
+        # Remove the point at the sentence with a probability of self.prob_rem_punc
+        #for regularization.
+        if en_sentence[-1] == '.' and de_sentence[-1] == '.' and random() < self.prob_remove_punct:
+                en_sentence = en_sentence[:-1]
+                de_sentence = de_sentence[:-1]
+
         en_sentence = self.tokenizer.encode(en_sentence, out_type=int, add_bos=False, add_eos=True)
         de_sentence = self.tokenizer.encode(de_sentence, out_type=int, add_bos=True, add_eos=True)
 
