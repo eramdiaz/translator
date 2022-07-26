@@ -10,7 +10,6 @@ H = 8
 SEQ_LEN = 16
 D_FF = 128
 N = 2
-VOCAB_SIZE = 128
 
 
 @pytest.fixture
@@ -101,10 +100,12 @@ class TestDecoderCell:
 class TestTransformer:
     @pytest.fixture(autouse=True, scope='class')
     def init(self, request):
-        request.cls.transformer = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
+        request.cls.transformer = Transformer(N, 'tests/material/mock_tokenizer.model', SEQ_LEN,
+                                              D_MODEL, D_K, D_V, H, D_FF)
 
     def test_forward(self, sent_1, sent_2):
-        assert self.transformer(sent_1, sent_2).shape == torch.Size((4, 16, 128))
+        assert self.transformer(sent_1, sent_2).shape == \
+               torch.Size((4, 16, self.transformer.tokenizer.vocab_size()))
 
     def test_mask(self, sent_1, sent_2, enc_mask, encdec_mask, dec_mask):
         self.transformer.eval()

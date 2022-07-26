@@ -1,6 +1,7 @@
 import pytest
 import pickle
 import torch
+from datetime import datetime
 from torch.utils.data import Dataset
 from translator.learning_rate import WarmUpLr
 from translator.models import Transformer
@@ -13,7 +14,6 @@ H = 8
 SEQ_LEN = 32
 D_FF = 128
 N = 2
-VOCAB_SIZE = 12000
 BATCH_SIZE = 2
 WARMUP_STEPS = 4000
 
@@ -46,12 +46,14 @@ def mock_valid():
 class TestTrainer:
     @pytest.fixture(autouse=True)
     def init(self, request, mock_train, mock_valid, tmp_path):
-        transformer = Transformer(N, VOCAB_SIZE, SEQ_LEN, D_MODEL, D_K, D_V, H, D_FF)
+        transformer = Transformer(N, 'tests/material/mock_tokenizer.model', SEQ_LEN, D_MODEL,
+                                  D_K, D_V, H, D_FF)
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         transformer = transformer.to(device)
         lr_sch = WarmUpLr(WARMUP_STEPS, D_MODEL)
+        exp = datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '/'
         request.cls.trainer = Trainer(transformer, mock_train, mock_valid,
-                                      lr_sch, BATCH_SIZE, experiment=tmp_path/'test.pt',
+                                      lr_sch, BATCH_SIZE, experiment=tmp_path / exp,
                                       predict_during_training=False)
 
     def test_do_epoch(self):
