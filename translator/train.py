@@ -44,7 +44,7 @@ class Trainer:
         self.max_bleu_score = 0.
         self._train_sample = "And we're going to tell you some stories from the sea here in video."
         self._valid_sample = "When I was 11, I remember waking up one morning to the sound of joy in my house."
-        self.it = 0.
+        self.it = 0
         self.experiment = self._parse_experiment_path(experiment)
         self.validation_freq = validation_freq
         self.predict_during_training = predict_during_training
@@ -97,7 +97,7 @@ class Trainer:
         with torch.no_grad():
             self.model.eval()
             total_loss = 0.
-            eval_it = 0.
+            eval_it = 0
             total_bleu = 0.
             for en_sentences, de_sentences, en_mask, deen_mask, de_mask in self.valid_dataloader:
 
@@ -108,6 +108,7 @@ class Trainer:
                     print(self._valid_sample + '\n')
                     print(self.model.predict(self._valid_sample, max_len=30), '\n')
 
+                start = time()
                 en_sentences, de_sentences = en_sentences.to(DEVICE), de_sentences.to(DEVICE)
                 en_mask, deen_mask, de_mask = en_mask.to(DEVICE), deen_mask.to(DEVICE), de_mask.to(DEVICE)
                 encoded = self.model.encode(en_sentences, en_mask)
@@ -117,11 +118,16 @@ class Trainer:
                 )
                 total_loss += loss.item()
                 bleu = self.compute_bleu_score(encoded, de_sentences, deen_mask[:, :1,:])
+                end = time()
+                print(f'VALID iteration {eval_it}; loss: {round(loss.item(), 4)}; '
+                      f'iteration time: {round(end - start, 4)}')
                 total_bleu += bleu
                 eval_it += 1
             total_loss = total_loss / eval_it
             total_bleu = total_bleu / eval_it
-            print(f'VALID iteration; valid_loss: {round(total_loss, 4)}; bleu score: {round(total_bleu, 4)}')
+            print('=' * 180)
+            print(f'VALID epoch; valid loss: {round(total_loss, 4)}; bleu score: {round(total_bleu, 4)}')
+            print('=' * 180)
             if total_bleu > self.max_bleu_score:
                 self.max_bleu_score = total_bleu
                 self.save_model()
@@ -144,7 +150,7 @@ class Trainer:
                 f.write(self.model.tokenizer.name)
         checkpoint = {
             'n': self.model.n, 'seq_len': self.model.seq_len, 'd_model': self.model.d_model,
-            'd_k': self.model.d_k, 'd_v': self.model.d_v, 'h': self.model.h, 'd_ff': self.model.d_ff,
-            'state_dict': self.model.state_dict(), 'bleu_score': self.max_bleu_score
+            'd_k': self.model.d_k, 'd_v': self.model.d_v, 'h': self.model.h,
+            'd_ff': self.model.d_ff, 'state_dict': self.model.state_dict()
         }
         torch.save(checkpoint, self.experiment / 'model.pt')
