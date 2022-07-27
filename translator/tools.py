@@ -25,7 +25,9 @@ def load_model(path: Union[str, Path]):
 
 
 def get_standard_model():
-    return Transformer(6, 'data/tokenizers/IWSLT2016-12000-bpe-0.model', 80, 512, 64, 64, 8, 2048)
+    tokenizer_path = Path(__file__).resolve().parent.parent / \
+                     'data/tokenizers/IWSLT2016-12000-bpe-0.model'
+    return Transformer(6, tokenizer_path, 80, 512, 64, 64, 8, 2048)
 
 
 def get_standard_trainer(
@@ -40,15 +42,16 @@ def get_standard_trainer(
     if model is None:
         model = get_standard_model()
     if data is None:
-        with open('data/IWSLT2016/train.pkl', 'rb') as f:
+        data_folder = Path(__file__).resolve().parent.parent / 'data/IWSLT2016'
+        with open(data_folder / 'train.pkl', 'rb') as f:
             train_samples = pickle.load(f)
-        with open('data/IWSLT2016/valid.pkl', 'rb') as f:
+        with open(data_folder / 'valid.pkl', 'rb') as f:
             valid_samples = pickle.load(f)
     else:
         train_samples, valid_samples = data
     if learning_rate is None:
-        learning_rate = 2e-4
-        #learning_rate = WarmUpLr(4000, self.model.d_model)
+        #learning_rate = 2e-4
+        learning_rate = WarmUpLr(4000, model.d_model)
     return Trainer(model, train_samples, valid_samples,
                    learning_rate, batch_size, experiment,
                    validation_freq, predict_during_training)
