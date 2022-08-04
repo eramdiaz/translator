@@ -18,29 +18,18 @@ BATCH_SIZE = 2
 WARMUP_STEPS = 4000
 
 
-class MyDataset(Dataset):
-    def __init__(self, samples):
-        self.samples = samples
-
-    def __getitem__(self, item):
-        return self.samples[item]
-
-    def __len__(self):
-        return len(self.samples)
-
-
 @pytest.fixture(scope='module')
 def mock_train():
     with open('tests/material/mock_train.pkl', 'rb') as f:
         mock_trainset = pickle.load(f)
-    return MyDataset(mock_trainset)
+    return mock_trainset
 
 
 @pytest.fixture(scope='module')
 def mock_valid():
     with open('tests/material/mock_valid.pkl', 'rb') as f:
         mock_validset = pickle.load(f)
-    return MyDataset(mock_validset)
+    return mock_validset
 
 
 class TestTrainer:
@@ -53,8 +42,7 @@ class TestTrainer:
         lr_sch = WarmUpLr(WARMUP_STEPS, D_MODEL)
         exp = datetime.now().strftime("%d-%m-%Y_%H:%M:%S") + '/'
         request.cls.trainer = Trainer(transformer, mock_train, mock_valid,
-                                      lr_sch, BATCH_SIZE, experiment=tmp_path / exp,
-                                      predict_during_training=False)
+                                      lr_sch, BATCH_SIZE, experiment=tmp_path / exp)
 
     def test_do_epoch(self):
         self.trainer.do_epoch()
