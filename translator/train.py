@@ -3,10 +3,11 @@
 import os
 import torch
 from time import time
+from json import dump
 from pathlib import Path
 from datetime import datetime
-from typing import Union
-from torch.utils.data import Dataset, DataLoader
+from typing import Union, Iterable
+from torch.utils.data import DataLoader
 from torchtext.data.metrics import bleu_score
 from translator.data import ItemGetter
 from translator.learning_rate import wrap_lr
@@ -22,19 +23,21 @@ class Trainer:
     def __init__(
             self,
             model: torch.nn.Module,
-            train_samples: Dataset,
-            valid_samples: Dataset,
+            train_samples: Iterable,
+            valid_samples: Iterable,
             learning_rate: Union[float, object],
             batch_size: int,
-            experiment: Union[str, Path, None] = None,
+            experiment: Union[str, Path] = None,
             validation_freq: int = 500,
-            predict_during_training: bool = True
+            dataset_name: str = None
     ):
         self.model = model
         self.train_samples = train_samples
         self.valid_samples = valid_samples
-        self.train_dataset = ItemGetter(self.train_samples, self.model.seq_len, self.model.tokenizer)
-        self.valid_dataset = ItemGetter(self.valid_samples, self.model.seq_len, self.model.tokenizer)
+        self.train_dataset = ItemGetter(self.train_samples, self.model.seq_len,
+                                        self.model.tokenizer, dataset_name)
+        self.valid_dataset = ItemGetter(self.valid_samples, self.model.seq_len,
+                                        self.model.tokenizer, dataset_name)
         self.train_dataloader = DataLoader(self.train_dataset, batch_size, True, num_workers=2)
         self.valid_dataloader = DataLoader(self.valid_dataset, batch_size, True, num_workers=2)
         self.learning_rate = wrap_lr(learning_rate)
@@ -42,12 +45,10 @@ class Trainer:
         self.criterion = torch.nn.CrossEntropyLoss(ignore_index=self.model.tokenizer.pad_id())
         self.optim = torch.optim.Adam(self.model.parameters(), lr=1e-8, betas=(0.9, 0.98), eps=1e-9)
         self.max_bleu_score = 0.
-        self._train_sample = "And we're going to tell you some stories from the sea here in video."
-        self._valid_sample = "When I was 11, I remember waking up one morning to the sound of joy in my house."
         self.it = 0
         self.experiment = self._parse_experiment_path(experiment)
         self.validation_freq = validation_freq
-        self.predict_during_training = predict_during_training
+        self.dataset_name = dataset_name
 
     def _parse_experiment_path(self, experiment):
         if experiment is None:
@@ -70,21 +71,22 @@ class Trainer:
 
     def do_epoch(self):
         self.model.train()
-        for en_sentences, de_sentences, en_mask, deen_mask, de_mask in self.train_dataloader:
+        for enc_sentences, dec_sentences, enc_mask, decenc_mask, dec_mask in self.train_dataloader:
             start = time()
-            en_sentences, de_sentences = en_sentences.to(DEVICE), de_sentences.to(DEVICE)
-            en_mask, deen_mask, de_mask = en_mask.to(DEVICE), deen_mask.to(DEVICE), de_mask.to(DEVICE)
+            enc_sentences, dec_sentences = enc_sentences.to(DEVICE), dec_sentences.to(DEVICE)
+            enc_mask, decenc_mask, dec_mask = enc_mask.to(DEVICE), decenc_mask.to(DEVICE), dec_mask.to(DEVICE)
             self.optim.zero_grad()
-            output = self.model(en_sentences, de_sentences, en_mask, deen_mask, de_mask)
+            output = self.model(enc_sentences, dec_sentences, enc_mask, decenc_mask, dec_mask)
             loss = self.criterion(
-                output[:, :-1, :].reshape(-1, output.shape[-1]), de_sentences[:, 1:].reshape(-1)
+                output[:, :-1, :].reshape(-1, output.shape[-1]), dec_sentences[:, 1:].reshape(-1)
             )
             loss.backward()
             self.optim.step()
             end = time()
-            print(f'TRAIN iteration {self.it}; loss: {round(loss.item(), 4)}; '
-                  f'lr: {self.optim.param_groups[0]["lr"]}; '
-                  f'iteration time: {round(end - start, 4)}')
+            if self.it % 10 == 0:
+                print(f'TRAIN iteration {self.it}; loss: {round(loss.item(), 4)}; '
+                      f'lr: {self.optim.param_groups[0]["lr"]}; '
+                      f'iteration time: {round(end - start, 4)}\n')
 
             if self.it % self.validation_freq == 0:
                 self.valid_epoch()
@@ -99,35 +101,28 @@ class Trainer:
             total_loss = 0.
             eval_it = 0
             total_bleu = 0.
-            for en_sentences, de_sentences, en_mask, deen_mask, de_mask in self.valid_dataloader:
-
-                if eval_it == 0 and self.predict_during_training:
-                    print('\n' + self._train_sample + '\n')
-                    print(self.model.predict(self._train_sample, max_len=30), '\n')
-
-                    print(self._valid_sample + '\n')
-                    print(self.model.predict(self._valid_sample, max_len=30), '\n')
-
+            for enc_sentences, dec_sentences, enc_mask, decenc_mask, dec_mask in self.valid_dataloader:
                 start = time()
-                en_sentences, de_sentences = en_sentences.to(DEVICE), de_sentences.to(DEVICE)
-                en_mask, deen_mask, de_mask = en_mask.to(DEVICE), deen_mask.to(DEVICE), de_mask.to(DEVICE)
-                encoded = self.model.encode(en_sentences, en_mask)
-                output = self.model.decode(encoded, de_sentences, deen_mask, de_mask)
+                enc_sentences, dec_sentences = enc_sentences.to(DEVICE), dec_sentences.to(DEVICE)
+                enc_mask, decenc_mask, dec_mask = enc_mask.to(DEVICE), decenc_mask.to(DEVICE), dec_mask.to(DEVICE)
+                encoded = self.model.encode(enc_sentences, enc_mask)
+                output = self.model.decode(encoded, dec_sentences, decenc_mask, dec_mask)
                 loss = self.criterion(
-                    output[:, :-1, :].reshape(-1, output.shape[-1]), de_sentences[:, 1:].reshape(-1)
+                    output[:, :-1, :].reshape(-1, output.shape[-1]), dec_sentences[:, 1:].reshape(-1)
                 )
                 total_loss += loss.item()
-                bleu = self.compute_bleu_score(encoded, de_sentences, deen_mask[:, :1,:])
+                bleu = self.compute_bleu_score(encoded, dec_sentences, decenc_mask[:, :1,:])
                 end = time()
                 print(f'VALID iteration {eval_it}; loss: {round(loss.item(), 4)}; '
-                      f'iteration time: {round(end - start, 4)}')
+                      f'iteration time: {round(end - start, 4)}\n')
                 total_bleu += bleu
                 eval_it += 1
             total_loss = total_loss / eval_it
             total_bleu = total_bleu / eval_it
-            print('=' * 180)
-            print(f'VALID epoch; valid loss: {round(total_loss, 4)}; bleu score: {round(total_bleu, 4)}')
-            print('=' * 180)
+            print('=' * 140 + '\n' +
+                  f'VALID epoch; valid loss: {round(total_loss, 4)}; bleu score: '
+                  f'{round(total_bleu, 4)}\n' +
+                  '=' * 140 + '\n')
             if total_bleu > self.max_bleu_score:
                 self.max_bleu_score = total_bleu
                 self.save_model()
@@ -142,12 +137,13 @@ class Trainer:
         return bleu_score(candidates, references, max_n=2, weights=[0.5, 0.5])
 
     def save_model(self):
-        print('Saving...')
+        print('Saving...\n')
         if not os.path.exists(self.experiment):
             os.makedirs(self.experiment)
-        if not os.path.exists(self.experiment/'tokenizer'):
-            with open(self.experiment/'tokenizer', 'w') as f:
-                f.write(self.model.tokenizer.name)
+        info = {'tokenizer': self.model.tokenizer.name, 'bleu_score': round(self.max_bleu_score, 4),
+                'dataset': self.train_dataset.dataset_name}
+        with open(self.experiment / 'info.json', 'w') as f:
+            dump(info, f)
         checkpoint = {
             'n': self.model.n, 'seq_len': self.model.seq_len, 'd_model': self.model.d_model,
             'd_k': self.model.d_k, 'd_v': self.model.d_v, 'h': self.model.h,

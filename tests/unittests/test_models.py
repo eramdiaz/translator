@@ -86,10 +86,10 @@ class TestDecoderCell:
                                     encdec_mask['mask'], dec_mask['mask'])
 
         eq_outputs = []
-        for inp, out, emask_len, dmask_len in zip(input_1, input_2, encdec_mask['enc_lengths'],
+        for inp, out, enc_len, dec_len in zip(input_1, input_2, encdec_mask['enc_lengths'],
                                                   dec_mask['dec_lengths']):
-            masked_inp = inp[:emask_len.item(), :]
-            masked_out = out[:dmask_len.item(), :]
+            masked_inp = inp[:enc_len.item(), :]
+            masked_out = out[:dec_len.item(), :]
             eq_outputs.append(self.decoder_cell(masked_out, masked_out, masked_out,
                                                         masked_inp, masked_inp))
         for output, eq_output, mask in zip(outputs, eq_outputs, dec_mask['dec_lengths']):
@@ -113,10 +113,10 @@ class TestTransformer:
                                    encdec_mask['mask'], dec_mask['mask'])
 
         eq_outputs = []
-        for inp, out, e_mask, g_mask in zip(sent_1, sent_2, enc_mask['enc_lengths'],
-                                            dec_mask['dec_lengths']):
-            masked_inp = inp[:e_mask.item()]
-            masked_out = out[:g_mask.item()]
+        for inp, out, enc_len, dec_len in zip(sent_1, sent_2, enc_mask['enc_lengths'],
+                                              dec_mask['dec_lengths']):
+            masked_inp = inp[:enc_len.item()]
+            masked_out = out[:dec_len.item()]
             eq_outputs.append(self.transformer(masked_inp, masked_out))
 
         for output, eq_output, mask in zip(outputs, eq_outputs, dec_mask['dec_lengths']):
