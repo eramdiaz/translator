@@ -1,0 +1,1 @@
+{"tokenizer": "data/tokenizers/IWSLT2016-12000-bpe-0.model", "bleu_score": 0.1939, "dataset": "IWSLT2016"}

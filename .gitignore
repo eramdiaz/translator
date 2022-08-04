@@ -1,6 +1,6 @@
 .venv
 .git
-checkpoints
+checkpoints/en-de-base-2807/model.pt
 .idea
 translator/__pycache__
 tests/unittests/__pycache__/
