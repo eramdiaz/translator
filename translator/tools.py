@@ -19,7 +19,7 @@ def load_model(path: Union[str, Path]):
     with open(f'{path}/info.json', 'r') as f:
         info = load(f)
     dataset_name = info['dataset'] if info['dataset'] is not None else 'an unknown dataset'
-    print(f'Loading model {path}, which has a bleu score of {info["bleu_score"]} on'
+    print(f'Loading model {path}, which achieves a bleu score of {info["bleu_score"]} on'
           f'{dataset_name}')
     tokenizer_path = Path(__file__).resolve().parent.parent / info['tokenizer']
     checkpoint = torch.load(f'{path}/model.pt', map_location='cpu')
