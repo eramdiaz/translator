@@ -16,7 +16,7 @@ def test_get_standard_trainer(mock_folder):
         mock_validset = pickle.load(f)
     model = Transformer(2, "tests/material/mock_tokenizer.model", 32, 64, 8, 8, 4, 128)
     trainer = get_standard_trainer(model, (mock_trainset, mock_validset), 0.02, 2,
-                                   mock_folder, dataset_name = "mock_data")
+                                   experiment = mock_folder, dataset_name = "mock_data")
     trainer.max_bleu_score = 0.0024
     trainer.save_model()
 
