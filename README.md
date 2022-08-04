@@ -1,4 +1,4 @@
-# Translator
+## Translator
 
 This is my implementation of the Transformer architecture, introduced on Vaswani et al. [2017], on a translation task.
 
@@ -59,7 +59,7 @@ The function `translator.tools.get_standard_model` creates a Transformer archite
 Loading tokenizer...
 ```
 
-# How to train a translator
+### How to train a translator
 
 The easiest way to train a model is to get a `translator.train.Trainer` object by calling the function `translator.tools.get_standard_trainer` and invoque its `train` method as shown below.
 
