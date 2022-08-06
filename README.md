@@ -49,7 +49,7 @@ Loading tokenizer...
 'Das ist ein Satz für den Übersetzer'
 ```
 
-### How to instantiate a standard Transformer model
+#### How to instantiate a standard Transformer model
 
 The function `translator.tools.get_standard_model` creates a Transformer architecture with the default parameters proposed on Vaswani et al. [2017]. The only different is a vocabulary size of 12000 instead of 38000.
 
@@ -59,7 +59,7 @@ The function `translator.tools.get_standard_model` creates a Transformer archite
 Loading tokenizer...
 ```
 
-### How to train a translator
+#### How to train a translator
 
 The easiest way to train a model is to get a `translator.train.Trainer` object by calling the function `translator.tools.get_standard_trainer` and invoque its `train` method as shown below.
 
