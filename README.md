@@ -19,7 +19,7 @@ pip install -r requirements-test.txt
 
 The repository consists on four folders: 
 - `translator` contains the python files where all the layers, models, trainers and data classes used are defined.
-- 'data` contains trained tokenizers ready to use inside the `tokenizers` folder and training data. Currently, the only training set which is available is the `IWSLMT2016` dataset.
+- `data` contains trained tokenizers ready to use inside the `tokenizers` folder and training data. Currently, the only training set which is available is the `IWSLMT2016` dataset.
 - `checkpoints` contains trained models available to load and use. These models are organized in folders whose names follow the format `$language_model_translates_from-$language_model_translates_to$other_info-$date`.
 - `tests` contains the tests for the project code. 
 

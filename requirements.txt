@@ -3,3 +3,4 @@ torchtext==0.11.2
 numpy
 sentencepiece
 typing
+gdown
