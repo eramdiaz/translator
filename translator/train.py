@@ -141,7 +141,7 @@ class Trainer:
         if not os.path.exists(self.experiment):
             os.makedirs(self.experiment)
         info = {'tokenizer': self.model.tokenizer.name, 'bleu_score': round(self.max_bleu_score, 4),
-                'dataset': self.train_dataset.dataset_name}
+                'dataset': self.train_dataset.dataset_name, 'model': str(self.experiment).split('/')[-1]}
         with open(self.experiment / 'info.json', 'w') as f:
             dump(info, f)
         checkpoint = {

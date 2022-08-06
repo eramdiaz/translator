@@ -3,6 +3,7 @@
 import os
 import pickle
 import torch
+import gdown
 from typing import Union, Tuple
 from json import load
 from pathlib import Path
@@ -12,12 +13,20 @@ from translator.train import Trainer
 from translator.learning_rate import WarmUpLr
 
 
+MODEL_ID = {
+    'en-de-base-2807': '1J5LwGA1zHuUh8HOUgNY2E5-WzZlbIGD9'
+}
+
+
 def load_model(path: Union[str, Path]):
     assert os.path.exists(path), f'The model {path} does not exist.'
     assert os.path.exists(f'{path}/info.json'), f'The model is missing the info file associated.'
-    assert os.path.exists(f'{path}/model.pt'), f'The model is missing the weights file'
     with open(f'{path}/info.json', 'r') as f:
         info = load(f)
+    if not os.path.exists(f'{path}/model.pt'):
+        url = f"https://drive.google.com/uc?id={MODEL_ID[info['model']]}"
+        output = f'{path}/model.pt'
+        gdown.download(url, output, quiet=False)
     dataset_name = info['dataset'] if info['dataset'] is not None else 'an unknown dataset'
     print(f'Loading model {path}, which achieves a bleu score of {info["bleu_score"]} on'
           f'{dataset_name}')
