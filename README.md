@@ -4,7 +4,7 @@ This is my implementation of the Transformer architecture, introduced on Vaswani
 
 ### Getting started
 
-For using this code, clone the repository and install the requirements on a virtual environment.
+To use this code, clone the repository and install the requirements in a virtual environment.
 
 ```bash
 git clone git@github.com:eramdiaz/translator.git
@@ -19,11 +19,11 @@ pip install -r requirements-test.txt
 
 The repository consists on four folders: 
 - `translator` contains the python files where all the layers, models, trainers and data classes used are defined.
-- `data` contains trained tokenizers ready to use inside the `tokenizers` folder and training data. Currently, the only training set which is available is the `IWSLMT2016` dataset.
-- `checkpoints` contains trained models available to load and use. These models are organized in folders whose names follow the format `$language_model_translates_from-$language_model_translates_to$other_info-$date`.
-- `tests` contains the tests for the project code. 
+- `data` contains trained tokenizers inside the `tokenizers` folder and training data. Currently, the only training set which is available is the `IWSLMT2016` dataset.
+- `checkpoints` contains trained models available to load and use. These models are organized in folders whose name follow the format `$language_model_translates_from-$language_model_translates_to-$other_info-$date`.
+- `tests` contains unittests for the code. 
 
-### Structure of the code
+### Code structure.
 
 The folder `translator`, where all the functions and classes needed for train and apply a translator are defined, contains the files.
 - `tokenizer.py`: defines the functions `load_tokenizer` and `train_tokenizer` which load and train respectively a `sentencepiece.SentencePieceProcessor` tokenizer.
