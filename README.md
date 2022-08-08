@@ -51,7 +51,7 @@ Loading tokenizer...
 
 #### How to instantiate a standard Transformer model
 
-The function `translator.tools.get_standard_model` creates a Transformer architecture with the default parameters proposed on Vaswani et al. [2017]. The only different is a vocabulary size of 12000 instead of 38000.
+The function `translator.tools.get_standard_model` creates a Transformer architecture with the default parameters proposed on Vaswani et al. [2017]. The only difference is a vocabulary size of 12000 instead of 38000.
 
 ```python
 >>> from translator.tools import get_standard_model
