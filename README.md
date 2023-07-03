@@ -4,7 +4,7 @@ This is my implementation of the Transformer architecture, introduced on Vaswani
 
 ### Getting started
 
-To use this code, clone the repository and install the requirements in a virtual environment. The recommended Python version is Python 3.10.6.
+To use this code, clone the repository and install the requirements in a virtual environment. The recommended Python version is 3.10.6.
 
 ```bash
 git clone git@github.com:eramdiaz/translator.git
