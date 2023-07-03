@@ -8,9 +8,10 @@ RUN adduser --system --group app \
 
 WORKDIR /translator
 
-RUN pip install -r requirements.txt \
-	&& pip install -r requirements-test.txt
+RUN pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cpu \
+	&& pip install -r requirements-test.txt --extra-index-url https://download.pytorch.org/whl/cpu
 
 USER app
 
 CMD ["python3"]
+
