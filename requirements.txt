@@ -1,6 +1,6 @@
-torch
-torchtext
-numpy
-sentencepiece
-typing
-gdown
+torch==1.13.0
+torchtext==0.14
+numpy==1.25.0
+sentencepiece==0.1.97
+gdown==4.6.0
+
