@@ -4,16 +4,68 @@ This is my implementation of the Transformer architecture, introduced on Vaswani
 
 ### Getting started
 
-To use this code, clone the repository and install the requirements in a virtual environment. The recommended Python version is 3.10.6.
+To use this code, you have two options: running it in a virtual environment or using a Docker container.
+
+#### Using a virtual environment
+
+1. Clone the repository:
 
 ```bash
 git clone git@github.com:eramdiaz/translator.git
 cd translator
-# Make sure to use Python 3.10.6 for the next line
+```
+
+2. Set up the virtual environment with Python 3.10.6, which is the recommended Python version for this project:
+
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
+
+3. Install the required packages:
+
+```bash
 pip install -r requirements.txt
 pip install -r requirements-test.txt
+```
+
+#### Using Docker
+
+It is possible to build the image with the provided Dockerfile or to pull it from the Docker Hub.
+
+##### Using Docker with the provided Dockerfile:
+
+1. Clone the repository: 
+
+```bash
+git clone git@github.com:eramdiaz/translator.git
+cd translator
+```
+
+2. Build the Docker image:
+
+```bash
+docker image build -t translator .
+```
+
+3. Run the Docker container:
+
+```bash
+docker container run -it translator
+```
+
+##### Using the Docker image from Docker Hub:
+
+1. Pull the Docker image from Docker Hub:
+
+```bash
+docker image pull eramdiaz/translator
+```
+
+2. Run the Docker container:
+
+```bash
+docker container run -it eramdiaz/translator
 ```
 
 ### Project structure.
@@ -74,4 +126,3 @@ Starting training
 ```
 
 It's also possible to train a model with customized data, model or settings by determining the arguments of `translator.tools.get_standard_trainer` or `translator.train.Trainer`.
-

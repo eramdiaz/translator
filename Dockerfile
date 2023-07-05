@@ -14,4 +14,3 @@ RUN pip install -r requirements.txt --extra-index-url https://download.pytorch.o
 USER app
 
 CMD ["python3"]
-
